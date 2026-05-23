@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradeForge — Student Grade Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['"Space Grotesk"', 'sans-serif'],
+                        body: ['"DM Sans"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #0C0C0A;
+            --surface: #15150F;
+            --card: #1C1C14;
+            --card-hover: #252518;
+            --border: #2C2C22;
+            --text: #F0EDE5;
+            --text-sec: #B8B3A5;
+            --muted: #6B6660;
+            --accent: #D4A843;
+            --accent-light: #E8C46A;
+            --accent-glow: rgba(212, 168, 67, 0.12);
+            --success: #4ADE80;
+            --warning: #FBBF24;
+            --danger: #EF4444;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 { font-family: 'Space Grotesk', sans-serif; }
+
+        /* Animated background orbs */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(130px);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .bg-orb-1 {
+            width: 650px; height: 650px;
+            background: radial-gradient(circle, rgba(212,168,67,0.12), transparent 70%);
+            top: -220px; right: -120px;
+            animation: floatA 26s ease-in-out infinite;
+        }
+        .bg-orb-2 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(180,130,50,0.08), transparent 70%);
+            bottom: -120px; left: -160px;
+            animation: floatB 32s ease-in-out infinite;
+        }
+        .bg-orb-3 {
+            width: 280px; height: 280px;
+            background: radial-gradient(circle, rgba(212,168,67,0.06), transparent 70%);
+            top: 45%; left: 40%;
+            animation: floatC 22s ease-in-out infinite;
+        }
+        @keyframes floatA {
+            0%,100% { transform: translate(0,0) scale(1); }
+            33% { transform: translate(-70px,50px) scale(1.08); }
+            66% { transform: translate(40px,-30px) scale(0.92); }
+        }
+        @keyframes floatB {
+            0%,100% { transform: translate(0,0) scale(1); }
+            50% { transform: translate(60px,-50px) scale(1.12); }
+        }
+        @keyframes floatC {
+            0%,100% { transform: translate(0,0); }
+            33% { transform: translate(35px,-25px); }
+            66% { transform: translate(-25px,35px); }
+        }
+
+        /* Subtle dot grid pattern on body */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(212,168,67,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* Card */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        .card:hover {
+            border-color: rgba(212,168,67,0.15);
+            box-shadow: 0 0 40px rgba(212,168,67,0.03);
+        }
+
+        /* Grade ring SVG */
+        .grade-ring-bg { stroke: var(--border); fill: none; stroke-width: 8; }
+        .grade-ring-progress {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.4,0,0.2,1), stroke 0.5s ease;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Input */
+        .input-field {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .input-field::placeholder { color: var(--muted); }
+
+        /* Buttons */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent), #B8922E);
+            color: #0C0C0A;
+            font-weight: 700;
+            padding: 10px 24px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 24px rgba(212,168,67,0.35);
+        }
+        .btn-primary:active { transform: translateY(0); }
+
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-sec);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-secondary:hover { border-color: var(--muted); color: var(--text); background: var(--card); }
+
+        .btn-icon {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--muted);
+            width: 34px; height: 34px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        .btn-icon:hover { background: var(--surface); border-color: var(--border); color: var(--text-sec); }
+        .btn-icon.danger:hover { color: var(--danger); border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.06); }
+        .btn-icon.edit:hover { color: var(--accent); border-color: rgba(212,168,67,0.3); background: rgba(212,168,67,0.06); }
+
+        /* Table */
+        .grade-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+        .grade-table thead th {
+            background: var(--surface);
+            color: var(--muted);
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 500;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+        .grade-table thead th:first-child { border-radius: 10px 0 0 0; }
+        .grade-table thead th:last-child { border-radius: 0 10px 0 0; }
+        .grade-table tbody tr {
+            transition: background 0.15s;
+            animation: rowIn 0.35s ease-out both;
+        }
+        .grade-table tbody tr:hover { background: var(--card-hover); }
+        .grade-table tbody td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(44,44,34,0.4);
+            font-size: 14px;
+            vertical-align: middle;
+        }
+        @keyframes rowIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Edit input in table */
+        .edit-input {
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            width: 100%;
+            min-width: 60px;
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+        .edit-input:focus { outline: none; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(6px);
+            z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            max-width: 560px; width: 100%;
+            max-height: 85vh; overflow-y: auto;
+            transform: scale(0.95) translateY(10px);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); }
+
+        /* Toast */
+        .toast-container {
+            position: fixed; bottom: 24px; right: 24px;
+            z-index: 200; display: flex; flex-direction: column; gap: 8px;
+        }
+        .toast {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-size: 14px;
+            display: flex; align-items: center; gap: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            animation: toastIn 0.4s ease-out;
+            max-width: 360px;
+        }
+        .toast.leaving { animation: toastOut 0.3s ease-in forwards; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateY(10px) scale(0.95); } }
+
+        /* Weight progress bar */
+        .weight-bar-track {
+            background: var(--surface);
+            border-radius: 6px;
+            height: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .weight-bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.3s ease;
+        }
+
+        /* Inline error */
+        .field-error {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 4px;
+            display: none;
+        }
+        .field-error.show { display: block; }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .empty-state i { font-size: 48px; margin-bottom: 16px; opacity: 0.3; }
+
+        /* Grade color classes for letter badges */
+        .letter-a { color: #4ADE80; }
+        .letter-b { color: #A3E635; }
+        .letter-c { color: #FBBF24; }
+        .letter-d { color: #FB923C; }
+        .letter-f { color: #EF4444; }
+
+        /* Grading scale row in modal */
+        .scale-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(44,44,34,0.3);
+        }
+        .scale-row:last-child { border-bottom: none; }
+
+        /* Reduce motion */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grade-table thead th, .grade-table tbody td {
+                padding: 10px 10px;
+                font-size: 13px;
+            }
+            .hide-mobile { display: none !important; }
+        }
+    </style>
+</head>
+<body class="font-body">
+
+    <!-- Background orbs -->
+    <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+    <div class="bg-orb bg-orb-3" aria-hidden="true"></div>
+
+    <!-- Main wrapper -->
+    <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-10">
+            <div>
+                <h1 class="font-display text-3xl sm:text-4xl font-bold tracking-tight" style="color: var(--accent);">
+                    GradeForge
+                </h1>
+                <p class="text-sm mt-1" style="color: var(--muted);">Calculate your course grade with precision</p>
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <input
+                    type="text"
+                    id="courseNameInput"
+                    class="input-field text-sm sm:text-base sm:w-64"
+                    placeholder="Enter course name..."
+                    maxlength="80"
+                    aria-label="Course name"
+                >
+                <button class="btn-secondary" onclick="openGradingScaleModal()" aria-label="Configure grading scale">
+                    <i class="fas fa-sliders"></i>
+                    <span class="hide-mobile">Scale</span>
+                </button>
+                <button class="btn-secondary danger" onclick="confirmClearAll()" aria-label="Clear all data" style="border-color: rgba(239,68,68,0.2); color: #f87171;">
+                    <i class="fas fa-trash-can"></i>
+                    <span class="hide-mobile">Clear</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main grid -->
+        <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Left: Grade summary -->
+            <section class="lg:col-span-4 space-y-6" aria-label="Grade summary">
+
+                <!-- Grade ring card -->
+                <div class="card p-6 flex flex-col items-center">
+                    <div class="relative" style="width: 200px; height: 200px;">
+                        <svg viewBox="0 0 200 200" width="200" height="200" aria-hidden="true">
+                            <circle cx="100" cy="100" r="88" class="grade-ring-bg"/>
+                            <circle cx="100" cy="100" r="88" class="grade-ring-progress" id="gradeRingProgress"
+                                stroke-dasharray="553.0"
+                                stroke-dashoffset="553.0"
+                                stroke="var(--accent)"/>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="letterGradeDisplay" class="font-display text-5xl font-bold letter-a" style="line-height:1;">--</span>
+                            <span id="percentageDisplay" class="font-display text-lg font-light mt-1" style="color: var(--text-sec);">0.0%</span>
+                        </div>
+                    </div>
+                    <p class="text-xs mt-4" style="color: var(--muted);">Weighted Course Grade</p>
+                </div>
+
+                <!-- Weight progress card -->
+                <div class="card p-5">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-display text-sm font-semibold" style="color: var(--text-sec);">Weight Progress</h3>
+                        <span id="weightTotalLabel" class="text-sm font-bold" style="color: var(--accent);">0%</span>
+                    </div>
+                    <div class="weight-bar-track">
+                        <div class="weight-bar-fill" id="weightBarFill" style="width: 0%; background: var(--accent);"></div>
+                    </div>
+                    <div class="flex justify-between mt-2">
+                        <span id="weightStatusText" class="text-xs" style="color: var(--muted);">No assignments yet</span>
+                        <span id="weightRemainingLabel" class="text-xs" style="color: var(--muted);">Remaining: 100%</span>
+                    </div>
+                </div>
+
+                <!-- Stats row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="card p-4 text-center">
+                        <p class="text-xs mb-1" style="color: var(--muted);">Assignments</p>
+                        <p id="assignmentCount" class="font-display text-2xl font-bold">0</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <p class="text-xs mb-1" style="color: var(--muted);">Avg. Score</p>
+                        <p id="avgScore" class="font-display text-2xl font-bold" style="color: var(--success);">--</p>
+                    </div>
+                </div>
+
+                <!-- Formula reference -->
+                <div class="card p-4" style="border-color: rgba(212,168,67,0.1);">
+                    <h4 class="font-display text-xs font-semibold mb-2" style="color: var(--accent);">
+                        <i class="fas fa-square-root-variable mr-1"></i> Formula
+                    </h4>
+                    <p class="text-xs leading-relaxed" style="color: var(--muted);">
+                        Weighted Grade = &Sigma;[ (Score / Max) &times; Weight ] &divide; &Sigma;(Weights)
+                    </p>
+                </div>
+            </section>
+
+            <!-- Right: Assignments -->
+            <section class="lg:col-span-8 space-y-6" aria-label="Assignments">
+
+                <!-- Add assignment form -->
+                <div class="card p-5">
+                    <h2 class="font-display text-lg font-semibold mb-4" style="color: var(--text);">
+                        <i class="fas fa-plus-circle mr-2" style="color: var(--accent); font-size: 16px;"></i>Add Assignment
+                    </h2>
+                    <form id="addForm" onsubmit="handleAddAssignment(event)" novalidate>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                            <div class="sm:col-span-2 lg:col-span-1">
+                                <label for="inputName" class="text-xs font-medium mb-1 block" style="color: var(--muted);">Name</label>
+                                <input type="text" id="inputName" class="input-field" placeholder="e.g. Midterm" maxlength="60" required>
+                                <p class="field-error" id="errorName">Please enter a name</p>
+                            </div>
+                            <div>
+                                <label for="inputScore" class="text-xs font-medium mb-1 block" style="color: var(--muted);">Score</label>
+                                <input type="number" id="inputScore" class="input-field" placeholder="85" min="0" step="any" required>
+                                <p class="field-error" id="errorScore">Enter a valid score</p>
+                            </div>
+                            <div>
+                                <label for="inputMax" class="text-xs font-medium mb-1 block" style="color: var(--muted);">Max Score</label>
+                                <input type="number" id="inputMax" class="input-field" placeholder="100" min="0.1" step="any" required>
+                                <p class="field-error" id="errorMax">Must be greater than 0</p>
+                            </div>
+                            <div>
+                                <label for="inputWeight" class="text-xs font-medium mb-1 block" style="color: var(--muted);">Weight (%)</label>
+                                <input type="number" id="inputWeight" class="input-field" placeholder="20" min="0" step="any" required>
+                                <p class="field-error" id="errorWeight">Enter a valid weight</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-4">
+                            <p class="field-error" id="errorGeneral" style="margin-top:0;"></p>
+                            <button type="submit" class="btn-primary ml-auto">
+                                <i class="fas fa-plus"></i> Add Assignment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Assignments table -->
+                <div class="card overflow-hidden">
+                    <div id="tableContainer" style="max-height: 520px; overflow-y: auto;">
+                        <table class="grade-table" id="assignmentsTable">
+                            <thead>
+                                <tr>
+                                    <th style="min-width:140px;">Assignment</th>
+                                    <th>Score</th>
+                                    <th>Max</th>
+                                    <th class="hide-mobile">Percentage</th>
+                                    <th>Weight</th>
+                                    <th style="width:90px; text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignmentsBody">
+                                <!-- Rows injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Empty state -->
+                    <div id="emptyState" class="empty-state" style="display:none;">
+                        <i class="fas fa-graduation-cap block"></i>
+                        <p class="font-display text-lg font-semibold" style="color: var(--text-sec);">No assignments yet</p>
+                        <p class="text-sm mt-1">Add your first assignment above to start tracking your grade</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="text-center mt-16 pb-8">
+            <p class="text-xs" style="color: var(--muted);">GradeForge &mdash; All data stored locally in your browser</p>
+        </footer>
+    </div>
+
+    <!-- Grading Scale Modal -->
+    <div class="modal-overlay" id="gradingScaleModal" role="dialog" aria-modal="true" aria-labelledby="scaleModalTitle">
+        <div class="modal-content">
+            <div class="p-6 border-b" style="border-color: var(--border);">
+                <div class="flex items-center justify-between">
+                    <h2 id="scaleModalTitle" class="font-display text-xl font-bold">Grading Scale</h2>
+                    <button class="btn-icon" onclick="closeGradingScaleModal()" aria-label="Close modal">
+                        <i class="fas fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <p class="text-xs mt-2" style="color: var(--muted);">Define minimum percentage for each letter grade. Highest grades first.</p>
+            </div>
+            <div class="p-6" id="scaleRowsContainer">
+                <!-- Scale rows injected by JS -->
+            </div>
+            <div class="p-6 border-t flex items-center justify-between" style="border-color: var(--border);">
+                <button class="btn-secondary" onclick="addScaleRow()">
+                    <i class="fas fa-plus"></i> Add Level
+                </button>
+                <div class="flex gap-3">
+                    <button class="btn-secondary" onclick="resetGradingScale()">Reset Default</button>
+                    <button class="btn-primary" onclick="saveGradingScale()">
+                        <i class="fas fa-check"></i> Save Scale
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Clear Modal -->
+    <div class="modal-overlay" id="confirmClearModal" role="dialog" aria-modal="true" aria-labelledby="clearModalTitle">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="p-6 text-center">
+                <div class="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4" style="background: rgba(239,68,68,0.1);">
+                    <i class="fas fa-triangle-exclamation text-2xl" style="color: var(--danger);"></i>
+                </div>
+                <h2 id="clearModalTitle" class="font-display text-xl font-bold mb-2">Clear All Data</h2>
+                <p class="text-sm" style="color: var(--text-sec);">This will remove all assignments and reset the course name. This action cannot be undone.</p>
+            </div>
+            <div class="px-6 pb-6 flex gap-3 justify-center">
+                <button class="btn-secondary" onclick="closeConfirmClear()" style="flex:1;">Cancel</button>
+                <button class="btn-primary" onclick="clearAllData()" style="flex:1; background: linear-gradient(135deg, #EF4444, #B91C1C);">Clear Everything</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+    <script>
+        /* ============================================================
+           STATE & CONSTANTS
+        ============================================================ */
+        const STORAGE_KEY = 'gradeForgeData';
+        const CIRCUMFERENCE = 2 * Math.PI * 88; // ~553.0 for r=88
+
+        const DEFAULT_GRADING_SCALE = [
+            { letter: "A+", minPercentage: 97 },
+            { letter: "A",  minPercentage: 93 },
+            { letter: "A-", minPercentage: 90 },
+            { letter: "B+", minPercentage: 87 },
+            { letter: "B",  minPercentage: 83 },
+            { letter: "B-", minPercentage: 80 },
+            { letter: "C+", minPercentage: 77 },
+            { letter: "C",  minPercentage: 73 },
+            { letter: "C-", minPercentage: 70 },
+            { letter: "D+", minPercentage: 67 },
+            { letter: "D",  minPercentage: 63 },
+            { letter: "D-", minPercentage: 60 },
+            { letter: "F",  minPercentage: 0 }
+        ];
+
+        let appData = {
+            courseName: "",
+            assignments: [],
+            gradingScale: JSON.parse(JSON.stringify(DEFAULT_GRADING_SCALE))
+        };
+
+        let editingId = null; // Track which assignment is being edited inline
+
+        /* ============================================================
+           UTILITY FUNCTIONS
+        ============================================================ */
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+        }
+
+        function saveData() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+            } catch (e) {
+                showToast("Could not save to local storage", "error");
+            }
+        }
+
+        function loadData() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    appData.courseName = parsed.courseName || "";
+                    appData.assignments = Array.isArray(parsed.assignments) ? parsed.assignments : [];
+                    appData.gradingScale = Array.isArray(parsed.gradingScale) && parsed.gradingScale.length > 0
+                        ? parsed.gradingScale
+                        : JSON.parse(JSON.stringify(DEFAULT_GRADING_SCALE));
+                }
+            } catch (e) {
+                console.warn("Failed to load saved data, using defaults.");
+            }
+        }
+
+        // Determine letter grade from percentage
+        function getLetterGrade(percentage) {
+            if (appData.gradingScale.length === 0) return "--";
+            // Scale should be sorted descending by minPercentage
+            for (const entry of appData.gradingScale) {
+                if (percentage >= entry.minPercentage) {
+                    return entry.letter;
+                }
+            }
+            return appData.gradingScale[appData.gradingScale.length - 1].letter;
+        }
+
+        // Get color class for a letter grade
+        function getLetterColorClass(letter) {
+            const l = letter.charAt(0).toUpperCase();
+            if (l === 'A') return 'letter-a';
+            if (l === 'B') return 'letter-b';
+            if (l === 'C') return 'letter-c';
+            if (l === 'D') return 'letter-d';
+            return 'letter-f';
+        }
+
+        // Get hex color for ring based on percentage
+        function getGradeColor(pct) {
+            if (pct >= 90) return '#4ADE80';
+            if (pct >= 80) return '#A3E635';
+            if (pct >= 70) return '#FBBF24';
+            if (pct >= 60) return '#FB923C';
+            return '#EF4444';
+        }
+
+        function clamp(val, min, max) {
+            return Math.min(max, Math.max(min, val));
+        }
+
+        /* ============================================================
+           TOAST NOTIFICATIONS
+        ============================================================ */
+        function showToast(message, type = "info") {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+
+            let iconClass = 'fas fa-circle-info';
+            let iconColor = 'var(--accent)';
+            if (type === 'success') { iconClass = 'fas fa-circle-check'; iconColor = 'var(--success)'; }
+            else if (type === 'error') { iconClass = 'fas fa-circle-xmark'; iconColor = 'var(--danger)'; }
+            else if (type === 'warning') { iconClass = 'fas fa-triangle-exclamation'; iconColor = 'var(--warning)'; }
+
+            toast.innerHTML = `<i class="${iconClass}" style="color:${iconColor};font-size:16px;"></i><span style="color:var(--text-sec);">${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('leaving');
+                toast.addEventListener('animationend', () => toast.remove());
+            }, 3200);
+        }
+
+        /* ============================================================
+           CALCULATION & UI UPDATE
+        ============================================================ */
+        function calculateAndRender() {
+            const assignments = appData.assignments;
+
+            // Calculate weighted percentage
+            let weightedSum = 0;
+            let totalWeight = 0;
+            let totalScorePct = 0;
+
+            assignments.forEach(a => {
+                const score = parseFloat(a.scoreAchieved) || 0;
+                const max = parseFloat(a.maxScore) || 1;
+                const weight = parseFloat(a.weight) || 0;
+                const pct = max > 0 ? (score / max) : 0;
+                weightedSum += pct * weight;
+                totalWeight += weight;
+                totalScorePct += max > 0 ? pct * 100 : 0;
+            });
+
+            const overallPct = totalWeight > 0 ? (weightedSum / totalWeight) * 100 : 0;
+            const avgPct = assignments.length > 0 ? totalScorePct / assignments.length : 0;
+            const letterGrade = totalWeight > 0 ? getLetterGrade(overallPct) : "--";
+            const remainingWeight = Math.max(0, 100 - totalWeight);
+
+            // Update grade ring
+            const ring = document.getElementById('gradeRingProgress');
+            const offset = totalWeight > 0 ? CIRCUMFERENCE * (1 - clamp(overallPct, 0, 100) / 100) : CIRCUMFERENCE;
+            ring.style.strokeDashoffset = offset;
+            ring.style.stroke = totalWeight > 0 ? getGradeColor(overallPct) : 'var(--border)';
+
+            // Update letter & percentage
+            const letterEl = document.getElementById('letterGradeDisplay');
+            letterEl.textContent = letterGrade;
+            letterEl.className = `font-display text-5xl font-bold ${getLetterColorClass(letterGrade)}`;
+            letterEl.style.lineHeight = '1';
+
+            const pctEl = document.getElementById('percentageDisplay');
+            pctEl.textContent = totalWeight > 0 ? `${overallPct.toFixed(1)}%` : '0.0%';
+
+            // Update weight bar
+            const weightPct = clamp(totalWeight, 0, 150); // allow overfill visual
+            const fillEl = document.getElementById('weightBarFill');
+            fillEl.style.width = `${Math.min(weightPct, 100)}%`;
+            fillEl.style.background = totalWeight > 100 ? 'var(--danger)' : totalWeight === 100 ? 'var(--success)' : 'var(--accent)';
+
+            document.getElementById('weightTotalLabel').textContent = `${totalWeight.toFixed(1)}%`;
+            document.getElementById('weightTotalLabel').style.color = totalWeight > 100 ? 'var(--danger)' : 'var(--accent)';
+
+            const statusEl = document.getElementById('weightStatusText');
+            if (totalWeight > 100) {
+                statusEl.textContent = 'Total weight exceeds 100%';
+                statusEl.style.color = 'var(--danger)';
+            } else if (totalWeight === 100) {
+                statusEl.textContent = 'All weight accounted for';
+                statusEl.style.color = 'var(--success)';
+            } else if (assignments.length === 0) {
+                statusEl.textContent = 'No assignments yet';
+                statusEl.style.color = 'var(--muted)';
+            } else {
+                statusEl.textContent = 'Incomplete weight';
+                statusEl.style.color = 'var(--warning)';
+            }
+
+            document.getElementById('weightRemainingLabel').textContent = `Remaining: ${remainingWeight.toFixed(1)}%`;
+
+            // Update stats
+            document.getElementById('assignmentCount').textContent = assignments.length;
+            const avgEl = document.getElementById('avgScore');
+            avgEl.textContent = assignments.length > 0 ? `${avgPct.toFixed(0)}%` : '--';
+            avgEl.style.color = assignments.length > 0 ? getGradeColor(avgPct) : 'var(--text)';
+
+            // Render table
+            renderTable();
+        }
+
+        /* ============================================================
+           RENDER ASSIGNMENTS TABLE
+        ============================================================ */
+        function renderTable() {
+            const tbody = document.getElementById('assignmentsBody');
+            const emptyState = document.getElementById('emptyState');
+            const tableContainer = document.getElementById('tableContainer');
+
+            if (appData.assignments.length === 0) {
+                tableContainer.style.display = 'none';
+                emptyState.style.display = 'block';
+                return;
+            }
+
+            tableContainer.style.display = 'block';
+            emptyState.style.display = 'none';
+
+            tbody.innerHTML = '';
+            appData.assignments.forEach((a, index) => {
+                const tr = document.createElement('tr');
+                tr.style.animationDelay = `${index * 0.03}s`;
+
+                if (editingId === a.id) {
+                    // Edit mode
+                    tr.innerHTML = `
+                        <td>
+                            <input type="text" class="edit-input" id="editName_${a.id}" value="${escapeHtml(a.name)}" maxlength="60">
+                        </td>
+                        <td>
+                            <input type="number" class="edit-input" id="editScore_${a.id}" value="${a.scoreAchieved}" min="0" step="any" style="width:70px;">
+                        </td>
+                        <td>
+                            <input type="number" class="edit-input" id="editMax_${a.id}" value="${a.maxScore}" min="0.1" step="any" style="width:70px;">
+                        </td>
+                        <td class="hide-mobile" style="color:var(--muted);">--</td>
+                        <td>
+                            <input type="number" class="edit-input" id="editWeight_${a.id}" value="${a.weight}" min="0" step="any" style="width:65px;">
+                        </td>
+                        <td style="text-align:right;">
+                            <div style="display:flex;gap:4px;justify-content:flex-end;">
+                                <button class="btn-icon" onclick="saveEdit('${a.id}')" title="Save" style="color:var(--success);"><i class="fas fa-check"></i></button>
+                                <button class="btn-icon danger" onclick="cancelEdit()" title="Cancel"><i class="fas fa-xmark"></i></button>
+                            </div>
+                        </td>
+                    `;
+                } else {
+                    // View mode
+                    const max = parseFloat(a.maxScore) || 1;
+                    const score = parseFloat(a.scoreAchieved) || 0;
+                    const pct = max > 0 ? (score / max * 100) : 0;
+                    const pctColor = getGradeColor(pct);
+                    const weight = parseFloat(a.weight) || 0;
+
+                    tr.innerHTML = `
+                        <td>
+                            <span class="font-medium" style="color:var(--text);">${escapeHtml(a.name)}</span>
+                        </td>
+                        <td>
+                            <span style="color:${pctColor};font-weight:600;">${a.scoreAchieved}</span>
+                        </td>
+                        <td style="color:var(--text-sec);">${a.maxScore}</td>
+                        <td class="hide-mobile">
+                            <span style="color:${pctColor};font-weight:500;">${pct.toFixed(1)}%</span>
+                        </td>
+                        <td>
+                            <span style="color:var(--accent);font-weight:500;">${weight}%</span>
+                        </td>
+                        <td style="text-align:right;">
+                            <div style="display:flex;gap:4px;justify-content:flex-end;">
+                                <button class="btn-icon edit" onclick="startEdit('${a.id}')" title="Edit" aria-label="Edit ${escapeHtml(a.name)}"><i class="fas fa-pen-to-square"></i></button>
+                                <button class="btn-icon danger" onclick="deleteAssignment('${a.id}')" title="Delete" aria-label="Delete ${escapeHtml(a.name)}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    `;
+                }
+                tbody.appendChild(tr);
+            });
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        /* ============================================================
+           ADD ASSIGNMENT
+        ============================================================ */
+        function handleAddAssignment(e) {
+            e.preventDefault();
+            clearFormErrors();
+
+            const name = document.getElementById('inputName').value.trim();
+            const scoreStr = document.getElementById('inputScore').value;
+            const maxStr = document.getElementById('inputMax').value;
+            const weightStr = document.getElementById('inputWeight').value;
+
+            let valid = true;
+
+            if (!name) {
+                showFieldError('errorName', 'Please enter a name');
+                valid = false;
+            }
+
+            const score = parseFloat(scoreStr);
+            if (scoreStr === '' || isNaN(score) || score < 0) {
+                showFieldError('errorScore', 'Enter a valid non-negative score');
+                valid = false;
+            }
+
+            const max = parseFloat(maxStr);
+            if (maxStr === '' || isNaN(max) || max <= 0) {
+                showFieldError('errorMax', 'Must be greater than 0');
+                valid = false;
+            }
+
+            const weight = parseFloat(weightStr);
+            if (weightStr === '' || isNaN(weight) || weight < 0) {
+                showFieldError('errorWeight', 'Enter a valid non-negative weight');
+                valid = false;
+            }
+
+            if (valid && score > max) {
+                showFieldError('errorScore', 'Score exceeds max');
+                valid = false;
+            }
+
+            // Check total weight
+            if (valid) {
+                const currentTotal = appData.assignments.reduce((sum, a) => sum + (parseFloat(a.weight) || 0), 0);
+                if (currentTotal + weight > 100) {
+                    showToast(`Total weight will be ${(currentTotal + weight).toFixed(1)}% (exceeds 100%)`, "warning");
+                    // Allow but warn
+                }
+            }
+
+            if (!valid) return;
+
+            const newAssignment = {
+                id: generateId(),
+                name: name,
+                scoreAchieved: score,
+                maxScore: max,
+                weight: weight
+            };
+
+            appData.assignments.push(newAssignment);
+            saveData();
+            calculateAndRender();
+
+            // Reset form
+            document.getElementById('addForm').reset();
+            showToast(`Added "${name}"`, "success");
+        }
+
+        function showFieldError(id, msg) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = msg;
+                el.classList.add('show');
+            }
+        }
+
+        function clearFormErrors() {
+            document.querySelectorAll('.field-error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+        }
+
+        /* ============================================================
+           EDIT ASSIGNMENT (INLINE)
+        ============================================================ */
+        function startEdit(id) {
+            editingId = id;
+            renderTable();
+            // Focus the name input
+            const nameInput = document.getElementById(`editName_${id}`);
+            if (nameInput) nameInput.focus();
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            renderTable();
+        }
+
+        function saveEdit(id) {
+            const nameEl = document.getElementById(`editName_${id}`);
+            const scoreEl = document.getElementById(`editScore_${id}`);
+            const maxEl = document.getElementById(`editMax_${id}`);
+            const weightEl = document.getElementById(`editWeight_${id}`);
+
+            if (!nameEl || !scoreEl || !maxEl || !weightEl) return;
+
+            const name = nameEl.value.trim();
+            const score = parseFloat(scoreEl.value);
+            const max = parseFloat(maxEl.value);
+            const weight = parseFloat(weightEl.value);
+
+            if (!name) { showToast("Name cannot be empty", "error"); return; }
+            if (isNaN(score) || score < 0) { showToast("Invalid score", "error"); return; }
+            if (isNaN(max) || max <= 0) { showToast("Max score must be greater than 0", "error"); return; }
+            if (isNaN(weight) || weight < 0) { showToast("Invalid weight", "error"); return; }
+            if (score > max) { showToast("Score cannot exceed max", "error"); return; }
+
+            // Update the assignment
+            const assignment = appData.assignments.find(a => a.id === id);
+            if (assignment) {
+                assignment.name = name;
+                assignment.scoreAchieved = score;
+                assignment.maxScore = max;
+                assignment.weight = weight;
+            }
+
+            editingId = null;
+            saveData();
+            calculateAndRender();
+            showToast(`Updated "${name}"`, "success");
+        }
+
+        /* ============================================================
+           DELETE ASSIGNMENT
+        ============================================================ */
+        function deleteAssignment(id) {
+            const assignment = appData.assignments.find(a => a.id === id);
+            if (!assignment) return;
+
+            const name = assignment.name;
+            appData.assignments = appData.assignments.filter(a => a.id !== id);
+
+            if (editingId === id) editingId = null;
+
+            saveData();
+            calculateAndRender();
+            showToast(`Removed "${name}"`, "info");
+        }
+
+        /* ============================================================
+           CLEAR ALL DATA
+        ============================================================ */
+        function confirmClearAll() {
+            if (appData.assignments.length === 0 && !appData.courseName) {
+                showToast("Nothing to clear", "info");
+                return;
+            }
+            document.getElementById('confirmClearModal').classList.add('active');
+        }
+
+        function closeConfirmClear() {
+            document.getElementById('confirmClearModal').classList.remove('active');
+        }
+
+        function clearAllData() {
+            appData.assignments = [];
+            appData.courseName = "";
+            editingId = null;
+            document.getElementById('courseNameInput').value = "";
+            saveData();
+            calculateAndRender();
+            closeConfirmClear();
+            showToast("All data cleared", "info");
+        }
+
+        /* ============================================================
+           GRADING SCALE MODAL
+        ============================================================ */
+        function openGradingScaleModal() {
+            renderScaleRows();
+            document.getElementById('gradingScaleModal').classList.add('active');
+        }
+
+        function closeGradingScaleModal() {
+            document.getElementById('gradingScaleModal').classList.remove('active');
+        }
+
+        function renderScaleRows() {
+            const container = document.getElementById('scaleRowsContainer');
+            container.innerHTML = '';
+
+            // Sort descending by minPercentage for display
+            const sorted = [...appData.gradingScale].sort((a, b) => b.minPercentage - a.minPercentage);
+
+            sorted.forEach((entry, index) => {
+                const row = document.createElement('div');
+                row.className = 'scale-row';
+                row.innerHTML = `
+                    <span class="text-xs font-mono" style="color:var(--muted);width:24px;flex-shrink:0;">${index + 1}</span>
+                    <input type="text" class="input-field scale-letter" value="${escapeHtml(entry.letter)}" placeholder="A+" style="width:70px;flex-shrink:0;text-align:center;font-weight:700;" maxlength="3">
+                    <span class="text-xs" style="color:var(--muted);flex-shrink:0;">min</span>
+                    <input type="number" class="input-field scale-percentage" value="${entry.minPercentage}" min="0" max="100" step="any" style="width:80px;flex-shrink:0;text-align:center;">
+                    <span class="text-xs" style="color:var(--muted);flex-shrink:0;">%</span>
+                    <button class="btn-icon danger" onclick="this.closest('.scale-row').remove()" title="Remove level" style="flex-shrink:0;">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addScaleRow() {
+            const container = document.getElementById('scaleRowsContainer');
+            const row = document.createElement('div');
+            row.className = 'scale-row';
+            row.style.animation = 'rowIn 0.3s ease-out';
+            row.innerHTML = `
+                <span class="text-xs font-mono" style="color:var(--muted);width:24px;flex-shrink:0;"></span>
+                <input type="text" class="input-field scale-letter" value="" placeholder="A+" style="width:70px;flex-shrink:0;text-align:center;font-weight:700;" maxlength="3">
+                <span class="text-xs" style="color:var(--muted);flex-shrink:0;">min</span>
+                <input type="number" class="input-field scale-percentage" value="" min="0" max="100" step="any" style="width:80px;flex-shrink:0;text-align:center;" placeholder="90">
+                <span class="text-xs" style="color:var(--muted);flex-shrink:0;">%</span>
+                <button class="btn-icon danger" onclick="this.closest('.scale-row').remove()" title="Remove level" style="flex-shrink:0;">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            `;
+            container.appendChild(row);
+            row.querySelector('.scale-letter').focus();
+        }
+
+        function saveGradingScale() {
+            const rows = document.querySelectorAll('#scaleRowsContainer .scale-row');
+            const newScale = [];
+            let valid = true;
+
+            rows.forEach(row => {
+                const letter = row.querySelector('.scale-letter').value.trim();
+                const pctStr = row.querySelector('.scale-percentage').value;
+                const pct = parseFloat(pctStr);
+
+                if (!letter) { valid = false; showToast("Letter grade cannot be empty", "error"); return; }
+                if (pctStr === '' || isNaN(pct) || pct < 0 || pct > 100) { valid = false; showToast(`Invalid percentage for "${letter}"`, "error"); return; }
+
+                newScale.push({ letter, minPercentage: pct });
+            });
+
+            if (!valid) return;
+            if (newScale.length === 0) { showToast("Scale must have at least one level", "error"); return; }
+
+            // Sort descending by minPercentage
+            newScale.sort((a, b) => b.minPercentage - a.minPercentage);
+
+            appData.gradingScale = newScale;
+            saveData();
+            calculateAndRender();
+            closeGradingScaleModal();
+            showToast("Grading scale updated", "success");
+        }
+
+        function resetGradingScale() {
+            appData.gradingScale = JSON.parse(JSON.stringify(DEFAULT_GRADING_SCALE));
+            renderScaleRows();
+            showToast("Scale reset to default", "info");
+        }
+
+        /* ============================================================
+           COURSE NAME HANDLER
+        ============================================================ */
+        function setupCourseNameHandler() {
+            const input = document.getElementById('courseNameInput');
+            input.value = appData.courseName || '';
+
+            let debounceTimer = null;
+            input.addEventListener('input', () => {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => {
+                    appData.courseName = input.value.trim();
+                    saveData();
+                }, 400);
+            });
+        }
+
+        /* ============================================================
+           KEYBOARD HANDLERS
+        ============================================================ */
+        function setupKeyboardHandlers() {
+            // Close modals on Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (document.getElementById('gradingScaleModal').classList.contains('active')) {
+                        closeGradingScaleModal();
+                    }
+                    if (document.getElementById('confirmClearModal').classList.contains('active')) {
+                        closeConfirmClear();
+                    }
+                    if (editingId) {
+                        cancelEdit();
+                    }
+                }
+            });
+
+            // Close modals on backdrop click
+            document.getElementById('gradingScaleModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeGradingScaleModal();
+            });
+            document.getElementById('confirmClearModal').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) closeConfirmClear();
+            });
+
+            // Enter key in edit inputs saves the edit
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && editingId) {
+                    const target = e.target;
+                    if (target.classList && target.classList.contains('edit-input')) {
+                        e.preventDefault();
+                        saveEdit(editingId);
+                    }
+                }
+            });
+        }
+
+        /* ============================================================
+           INITIALIZATION
+        ============================================================ */
+        function init() {
+            loadData();
+            setupCourseNameHandler();
+            setupKeyboardHandlers();
+            calculateAndRender();
+        }
+
+        // Boot the app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

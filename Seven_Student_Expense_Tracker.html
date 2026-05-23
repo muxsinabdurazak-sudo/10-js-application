@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Expense Tracker</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Font Awesome -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+  />
+
+  <style>
+    ::-webkit-scrollbar{
+      width:8px;
+    }
+
+    ::-webkit-scrollbar-thumb{
+      background:#3b82f6;
+      border-radius:20px;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-100 font-sans">
+
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside class="w-72 bg-slate-900 text-white flex flex-col">
+
+      <!-- LOGO -->
+      <div class="p-6 border-b border-slate-800">
+        <h1 class="text-3xl font-bold">
+          ExpenseTracker
+        </h1>
+
+        <p class="text-slate-400 mt-2 text-sm">
+          Student Finance Dashboard
+        </p>
+      </div>
+
+      <!-- PROFILE -->
+      <div class="p-6 border-b border-slate-800 flex items-center gap-4">
+        <img
+          src="https://i.pravatar.cc/100"
+          class="w-14 h-14 rounded-full border-2 border-blue-500"
+        />
+
+        <div>
+          <h2 class="font-semibold">
+            Ahmed Hassan
+          </h2>
+
+          <p class="text-slate-400 text-sm">
+            Computer Science Student
+          </p>
+        </div>
+      </div>
+
+      <!-- NAV -->
+      <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+
+        <button onclick="showSection('dashboard')" class="menu-btn bg-blue-600 w-full text-left px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-chart-line mr-2"></i>
+          Dashboard
+        </button>
+
+        <button onclick="showSection('expenses')" class="menu-btn hover:bg-slate-800 w-full text-left px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-wallet mr-2"></i>
+          Expenses
+        </button>
+
+        <button onclick="showSection('budgets')" class="menu-btn hover:bg-slate-800 w-full text-left px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-piggy-bank mr-2"></i>
+          Budgets
+        </button>
+
+        <button onclick="showSection('analytics')" class="menu-btn hover:bg-slate-800 w-full text-left px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-chart-pie mr-2"></i>
+          Analytics
+        </button>
+
+        <button onclick="showSection('profile')" class="menu-btn hover:bg-slate-800 w-full text-left px-4 py-3 rounded-2xl">
+          <i class="fa-solid fa-user mr-2"></i>
+          Profile
+        </button>
+
+      </nav>
+
+      <!-- FOOTER -->
+      <div class="p-4 border-t border-slate-800">
+        <button class="bg-red-500 hover:bg-red-600 w-full py-3 rounded-2xl font-semibold">
+          Logout
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 overflow-y-auto">
+
+      <!-- HEADER -->
+      <header class="bg-white px-8 py-5 shadow-sm flex items-center justify-between">
+
+        <div>
+          <h2 class="text-3xl font-bold text-slate-800">
+            Welcome Back 👋
+          </h2>
+
+          <p class="text-slate-500 mt-1">
+            Manage your student expenses smartly
+          </p>
+        </div>
+
+        <div class="flex items-center gap-5">
+
+          <button class="relative text-2xl">
+            <i class="fa-solid fa-bell"></i>
+
+            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 rounded-full">
+              3
+            </span>
+          </button>
+
+          <img
+            src="https://i.pravatar.cc/100"
+            class="w-12 h-12 rounded-full"
+          />
+
+        </div>
+
+      </header>
+
+      <!-- CONTENT -->
+      <div class="p-8">
+
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="section">
+
+          <!-- CARDS -->
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+              <p class="text-slate-500">
+                Total Expenses
+              </p>
+
+              <h1 class="text-4xl font-bold mt-3 text-red-500">
+                $1,240
+              </h1>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+              <p class="text-slate-500">
+                Monthly Budget
+              </p>
+
+              <h1 class="text-4xl font-bold mt-3 text-blue-600">
+                $2,000
+              </h1>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+              <p class="text-slate-500">
+                Remaining
+              </p>
+
+              <h1 class="text-4xl font-bold mt-3 text-green-600">
+                $760
+              </h1>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+              <p class="text-slate-500">
+                Transactions
+              </p>
+
+              <h1 class="text-4xl font-bold mt-3 text-orange-500">
+                48
+              </h1>
+            </div>
+
+          </div>
+
+          <!-- CHARTS -->
+          <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+
+            <!-- BAR -->
+            <div class="xl:col-span-2 bg-white rounded-3xl p-6 shadow-sm">
+
+              <div class="flex items-center justify-between mb-6">
+                <h2 class="text-xl font-bold">
+                  Monthly Spending
+                </h2>
+
+                <button class="text-blue-600 font-semibold">
+                  View Report
+                </button>
+              </div>
+
+              <canvas id="barChart" height="120"></canvas>
+
+            </div>
+
+            <!-- RECENT -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <h2 class="text-xl font-bold mb-6">
+                Recent Transactions
+              </h2>
+
+              <div class="space-y-5">
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h3 class="font-semibold">
+                      Food
+                    </h3>
+
+                    <p class="text-sm text-slate-500">
+                      Burger + Drink
+                    </p>
+                  </div>
+
+                  <span class="text-red-500 font-bold">
+                    -$12
+                  </span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h3 class="font-semibold">
+                      Transport
+                    </h3>
+
+                    <p class="text-sm text-slate-500">
+                      Taxi
+                    </p>
+                  </div>
+
+                  <span class="text-red-500 font-bold">
+                    -$8
+                  </span>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h3 class="font-semibold">
+                      Books
+                    </h3>
+
+                    <p class="text-sm text-slate-500">
+                      Programming Book
+                    </p>
+                  </div>
+
+                  <span class="text-red-500 font-bold">
+                    -$25
+                  </span>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- EXPENSES -->
+        <section id="expenses" class="section hidden">
+
+          <div class="bg-white rounded-3xl p-8 shadow-sm">
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+
+              <h1 class="text-3xl font-bold">
+                Expenses
+              </h1>
+
+              <button
+                onclick="openModal()"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl"
+              >
+                + Add Expense
+              </button>
+
+            </div>
+
+            <!-- FILTERS -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+
+              <input
+                type="text"
+                placeholder="Search expenses..."
+                class="border rounded-2xl px-4 py-3"
+              />
+
+              <select class="border rounded-2xl px-4 py-3">
+                <option>All Categories</option>
+                <option>Food</option>
+                <option>Transport</option>
+                <option>Entertainment</option>
+                <option>Books</option>
+              </select>
+
+              <input
+                type="date"
+                class="border rounded-2xl px-4 py-3"
+              />
+
+            </div>
+
+            <!-- TABLE -->
+            <div class="overflow-x-auto">
+
+              <table class="w-full">
+
+                <thead>
+                  <tr class="border-b">
+                    <th class="text-left py-4">Category</th>
+                    <th class="text-left py-4">Description</th>
+                    <th class="text-left py-4">Date</th>
+                    <th class="text-left py-4">Amount</th>
+                    <th class="text-left py-4">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  <tr class="border-b">
+                    <td class="py-4">Food</td>
+                    <td class="py-4">Lunch</td>
+                    <td class="py-4">2026-05-20</td>
+                    <td class="py-4 text-red-500 font-bold">
+                      -$15
+                    </td>
+
+                    <td class="py-4 space-x-3">
+                      <button class="text-blue-600">
+                        Edit
+                      </button>
+
+                      <button class="text-red-500">
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr class="border-b">
+                    <td class="py-4">Books</td>
+                    <td class="py-4">UI/UX Book</td>
+                    <td class="py-4">2026-05-19</td>
+                    <td class="py-4 text-red-500 font-bold">
+                      -$35
+                    </td>
+
+                    <td class="py-4 space-x-3">
+                      <button class="text-blue-600">
+                        Edit
+                      </button>
+
+                      <button class="text-red-500">
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- BUDGETS -->
+        <section id="budgets" class="section hidden">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+
+            <!-- CARD -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <div class="flex justify-between items-center mb-5">
+                <h2 class="font-bold text-xl">
+                  Food Budget
+                </h2>
+
+                <span class="text-green-600 font-semibold">
+                  60%
+                </span>
+              </div>
+
+              <div class="w-full bg-slate-200 rounded-full h-4">
+                <div class="bg-green-500 h-4 rounded-full w-[60%]"></div>
+              </div>
+
+              <div class="flex justify-between mt-4 text-sm text-slate-500">
+                <span>$300 Spent</span>
+                <span>$500 Budget</span>
+              </div>
+
+            </div>
+
+            <!-- CARD -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <div class="flex justify-between items-center mb-5">
+                <h2 class="font-bold text-xl">
+                  Transport
+                </h2>
+
+                <span class="text-orange-500 font-semibold">
+                  80%
+                </span>
+              </div>
+
+              <div class="w-full bg-slate-200 rounded-full h-4">
+                <div class="bg-orange-500 h-4 rounded-full w-[80%]"></div>
+              </div>
+
+              <div class="flex justify-between mt-4 text-sm text-slate-500">
+                <span>$160 Spent</span>
+                <span>$200 Budget</span>
+              </div>
+
+            </div>
+
+            <!-- CARD -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <div class="flex justify-between items-center mb-5">
+                <h2 class="font-bold text-xl">
+                  Entertainment
+                </h2>
+
+                <span class="text-red-500 font-semibold">
+                  95%
+                </span>
+              </div>
+
+              <div class="w-full bg-slate-200 rounded-full h-4">
+                <div class="bg-red-500 h-4 rounded-full w-[95%]"></div>
+              </div>
+
+              <div class="flex justify-between mt-4 text-sm text-slate-500">
+                <span>$190 Spent</span>
+                <span>$200 Budget</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ANALYTICS -->
+        <section id="analytics" class="section hidden">
+
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+            <!-- PIE -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <h2 class="text-2xl font-bold mb-6">
+                Category Breakdown
+              </h2>
+
+              <canvas id="pieChart"></canvas>
+
+            </div>
+
+            <!-- LINE -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm">
+
+              <h2 class="text-2xl font-bold mb-6">
+                Spending Trend
+              </h2>
+
+              <canvas id="lineChart"></canvas>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- PROFILE -->
+        <section id="profile" class="section hidden">
+
+          <div class="bg-white rounded-3xl p-8 shadow-sm max-w-4xl">
+
+            <h1 class="text-3xl font-bold mb-8">
+              User Profile
+            </h1>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <div>
+                <label class="block mb-2 font-semibold">
+                  First Name
+                </label>
+
+                <input
+                  type="text"
+                  value="Ahmed"
+                  class="w-full border rounded-2xl px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label class="block mb-2 font-semibold">
+                  Last Name
+                </label>
+
+                <input
+                  type="text"
+                  value="Hassan"
+                  class="w-full border rounded-2xl px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label class="block mb-2 font-semibold">
+                  Email
+                </label>
+
+                <input
+                  type="email"
+                  value="student@gmail.com"
+                  class="w-full border rounded-2xl px-4 py-3"
+                />
+              </div>
+
+              <div>
+                <label class="block mb-2 font-semibold">
+                  Currency
+                </label>
+
+                <select class="w-full border rounded-2xl px-4 py-3">
+                  <option>USD</option>
+                  <option>EUR</option>
+                  <option>GBP</option>
+                </select>
+              </div>
+
+            </div>
+
+            <button class="mt-8 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl">
+              Save Changes
+            </button>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- MODAL -->
+  <div
+    id="expenseModal"
+    class="fixed inset-0 bg-black/40 hidden items-center justify-center p-4"
+  >
+
+    <div class="bg-white rounded-3xl p-8 w-full max-w-xl">
+
+      <div class="flex justify-between items-center mb-6">
+
+        <h2 class="text-2xl font-bold">
+          Add New Expense
+        </h2>
+
+        <button onclick="closeModal()" class="text-2xl">
+          ✕
+        </button>
+
+      </div>
+
+      <div class="space-y-5">
+
+        <input
+          type="number"
+          placeholder="Amount"
+          class="w-full border rounded-2xl px-4 py-3"
+        />
+
+        <input
+          type="text"
+          placeholder="Description"
+          class="w-full border rounded-2xl px-4 py-3"
+        />
+
+        <select class="w-full border rounded-2xl px-4 py-3">
+          <option>Select Category</option>
+          <option>Food</option>
+          <option>Transport</option>
+          <option>Books</option>
+          <option>Entertainment</option>
+        </select>
+
+        <input
+          type="date"
+          class="w-full border rounded-2xl px-4 py-3"
+        />
+
+        <button
+          class="bg-blue-600 hover:bg-blue-700 text-white w-full py-3 rounded-2xl"
+        >
+          Save Expense
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT -->
+  <script>
+
+    // NAVIGATION
+
+    const sections = document.querySelectorAll('.section');
+    const buttons = document.querySelectorAll('.menu-btn');
+
+    function showSection(id){
+
+      sections.forEach(section=>{
+        section.classList.add('hidden');
+      });
+
+      document.getElementById(id).classList.remove('hidden');
+
+      buttons.forEach(btn=>{
+        btn.classList.remove('bg-blue-600');
+      });
+
+      event.target.classList.add('bg-blue-600');
+
+    }
+
+    // MODAL
+
+    const modal = document.getElementById('expenseModal');
+
+    function openModal(){
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal(){
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // BAR CHART
+
+    new Chart(document.getElementById('barChart'), {
+      type:'bar',
+
+      data:{
+        labels:['Jan','Feb','Mar','Apr','May','Jun'],
+
+        datasets:[{
+          label:'Expenses',
+          data:[400,600,500,800,1200,900],
+          borderWidth:1
+        }]
+      },
+
+      options:{
+        responsive:true
+      }
+    });
+
+    // PIE CHART
+
+    new Chart(document.getElementById('pieChart'), {
+      type:'pie',
+
+      data:{
+        labels:['Food','Transport','Books','Entertainment'],
+
+        datasets:[{
+          data:[35,20,25,20]
+        }]
+      },
+
+      options:{
+        responsive:true
+      }
+    });
+
+    // LINE CHART
+
+    new Chart(document.getElementById('lineChart'), {
+      type:'line',
+
+      data:{
+        labels:['Week 1','Week 2','Week 3','Week 4'],
+
+        datasets:[{
+          label:'Spending',
+          data:[120,340,280,500],
+          fill:false
+        }]
+      },
+
+      options:{
+        responsive:true
+      }
+    });
+
+  </script>
+
+</body>
+</html>

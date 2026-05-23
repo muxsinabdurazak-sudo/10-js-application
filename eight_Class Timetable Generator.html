@@ -1,0 +1,1051 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Client-Side Class Timetable Generator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha512-zUYJ8bgiG7+myP7XkYb5R2jwwJ5+cqJT0JxyK0fA7GpyM1xGrdxD3tYuLcklPEdjIaYVBCF3OeDcfzV3dzrlng==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNa5FqZ3L0d1JWO7gM73zFdnFjxpzr5zlsM/7QGXFZgzHoZbuHnr0QEG8c5FqmvINxJ+/Y1nA3q6YmSHi5eCrw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    body { font-family: Inter, sans-serif; }
+    .tab-button.active { background-color: rgba(30, 41, 59, .9); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .slot-cell { min-height: 80px; }
+    .event-card { cursor: grab; }
+    .event-card:active { cursor: grabbing; }
+    .toast-enter { transition: opacity .2s ease, transform .2s ease; opacity: 0; transform: translateY(8px); }
+    .toast-enter-active { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="max-w-7xl mx-auto p-4 space-y-4">
+    <header class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-sky-400 uppercase tracking-[0.3em] text-sm font-semibold">Client-Side Utility</p>
+        <h1 class="text-3xl md:text-4xl font-extrabold">Class Timetable Generator</h1>
+        <p class="mt-2 text-slate-400 max-w-2xl">Define courses, teachers, rooms, classes and build a schedule entirely in the browser. Save, export, and adjust without any backend.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button id="saveStateBtn" class="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Save State</button>
+        <button id="clearStateBtn" class="rounded-xl border border-slate-700 px-4 py-2 text-sm hover:border-slate-500">Clear All</button>
+        <button id="exportJsonBtn" class="rounded-xl bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700">Export JSON</button>
+        <button id="importJsonBtn" class="rounded-xl bg-slate-800 px-4 py-2 text-sm hover:bg-slate-700">Import JSON</button>
+      </div>
+    </header>
+
+    <div class="grid gap-4 lg:grid-cols-[280px_1fr]">
+      <aside class="space-y-4 rounded-3xl bg-slate-900/90 p-4 shadow-xl ring-1 ring-white/10 backdrop-blur">
+        <div class="space-y-3">
+          <h2 class="text-lg font-semibold">Sections</h2>
+          <div class="grid gap-2">
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="courses">Courses</button>
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="teachers">Teachers</button>
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="rooms">Rooms</button>
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="classes">Classes</button>
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="settings">Settings</button>
+            <button class="tab-button rounded-2xl px-4 py-3 text-left text-sm font-medium text-slate-200 transition hover:bg-slate-800" data-tab="timetable">Timetable</button>
+          </div>
+        </div>
+
+        <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+          <h3 class="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Storage</h3>
+          <p class="mt-2 text-sm text-slate-400">Data is persisted locally using <span class="font-semibold text-slate-200">localStorage</span>. Use export/import for sharing.</p>
+        </div>
+      </aside>
+
+      <main class="space-y-6">
+        <section id="courses" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Courses</h2>
+              <p class="mt-1 text-sm text-slate-400">Add the subjects that will appear in the timetable.</p>
+            </div>
+            <button id="addCourseBtn" class="inline-flex items-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Add Course</button>
+          </div>
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <div class="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">Course Form</h3>
+              <div class="grid gap-3">
+                <label class="space-y-1 text-sm text-slate-300"><span>Name</span><input id="courseName" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="Mathematics"></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Code</span><input id="courseCode" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="MATH101"></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Duration (minutes)</span><input id="courseDuration" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="30" step="30" value="60"></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Color</span><input id="courseColor" class="h-11 w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm outline-none focus:border-sky-400" type="color" value="#38bdf8"></label>
+                <button id="saveCourseBtn" class="w-full rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600">Save Course</button>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">Courses List</h3>
+              <div id="coursesList" class="mt-4 space-y-3"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="teachers" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Teachers</h2>
+              <p class="mt-1 text-sm text-slate-400">Define instructor availability and course assignments.</p>
+            </div>
+            <button id="addTeacherBtn" class="inline-flex items-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Add Teacher</button>
+          </div>
+          <div class="mt-6 space-y-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Name</span><input id="teacherName" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="Ms. Smith"></label>
+              <label class="space-y-1 text-sm text-slate-300"><span>Assigned Courses</span><select id="teacherCourses" multiple class="h-36 w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"></select></label>
+            </div>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Monday Availability</span><input id="teacherAvailMon" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="08:00-16:00"></label>
+              <label class="space-y-1 text-sm text-slate-300"><span>Tuesday Availability</span><input id="teacherAvailTue" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="08:00-16:00"></label>
+            </div>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Wednesday Availability</span><input id="teacherAvailWed" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="08:00-16:00"></label>
+              <label class="space-y-1 text-sm text-slate-300"><span>Thursday Availability</span><input id="teacherAvailThu" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="08:00-16:00"></label>
+            </div>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Friday Availability</span><input id="teacherAvailFri" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="08:00-16:00"></label>
+              <button id="saveTeacherBtn" class="h-12 rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600">Save Teacher</button>
+            </div>
+          </div>
+          <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <h3 class="text-base font-semibold">Teachers List</h3>
+            <div id="teachersList" class="mt-4 space-y-3"></div>
+          </div>
+        </section>
+
+        <section id="rooms" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Rooms</h2>
+              <p class="mt-1 text-sm text-slate-400">Define room capacity and required resources.</p>
+            </div>
+            <button id="addRoomBtn" class="inline-flex items-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Add Room</button>
+          </div>
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <div class="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">Room Form</h3>
+              <div class="grid gap-3">
+                <label class="space-y-1 text-sm text-slate-300"><span>Name / Number</span><input id="roomName" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="Room 101"></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Capacity</span><input id="roomCapacity" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="1" value="30"></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Features (comma separated)</span><input id="roomFeatures" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="Projector, Whiteboard"></label>
+                <button id="saveRoomBtn" class="w-full rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600">Save Room</button>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">Rooms List</h3>
+              <div id="roomsList" class="mt-4 space-y-3"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="classes" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Classes / Groups</h2>
+              <p class="mt-1 text-sm text-slate-400">Define the teaching groups and required course frequencies.</p>
+            </div>
+            <button id="addClassBtn" class="inline-flex items-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Add Class</button>
+          </div>
+          <div class="mt-6 space-y-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Name</span><input id="className" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="text" placeholder="Grade 5A"></label>
+              <label class="space-y-1 text-sm text-slate-300"><span>Students</span><input id="classStudents" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="1" value="25"></label>
+            </div>
+            <div class="grid gap-4 lg:grid-cols-2">
+              <label class="space-y-1 text-sm text-slate-300"><span>Preferred Teachers</span><select id="classTeachers" multiple class="h-36 w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"></select></label>
+              <div class="space-y-3 rounded-3xl border border-slate-800 bg-slate-950/80 p-3">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-slate-200">Required Courses</p>
+                  <button id="addRequiredCourseBtn" class="rounded-2xl bg-slate-700 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-600">Add</button>
+                </div>
+                <div id="requiredCoursesList" class="space-y-3"></div>
+              </div>
+            </div>
+            <button id="saveClassBtn" class="w-full rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600">Save Class</button>
+          </div>
+          <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <h3 class="text-base font-semibold">Classes List</h3>
+            <div id="classesList" class="mt-4 space-y-3"></div>
+          </div>
+        </section>
+
+        <section id="settings" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Settings</h2>
+              <p class="mt-1 text-sm text-slate-400">Configure days, school hours, slot duration and breaks.</p>
+            </div>
+            <button id="saveSettingsBtn" class="inline-flex items-center rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Save Settings</button>
+          </div>
+          <div class="mt-6 grid gap-4 lg:grid-cols-2">
+            <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">School Days</h3>
+              <div class="mt-3 grid gap-2 sm:grid-cols-2">
+                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" class="day-checkbox h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-400" value="Monday" checked /> Monday</label>
+                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" class="day-checkbox h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-400" value="Tuesday" checked /> Tuesday</label>
+                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" class="day-checkbox h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-400" value="Wednesday" checked /> Wednesday</label>
+                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" class="day-checkbox h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-400" value="Thursday" checked /> Thursday</label>
+                <label class="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" class="day-checkbox h-4 w-4 rounded border-slate-700 bg-slate-900 text-sky-400" value="Friday" checked /> Friday</label>
+              </div>
+            </div>
+            <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+              <h3 class="text-base font-semibold">Daily Settings</h3>
+              <div class="mt-4 grid gap-4">
+                <label class="space-y-1 text-sm text-slate-300"><span>Start Time</span><input id="schoolStartTime" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="time" value="08:00" /></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>End Time</span><input id="schoolEndTime" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="time" value="16:00" /></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Default Slot Duration</span><input id="defaultSlotDuration" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="30" step="15" value="60" /></label>
+              </div>
+            </div>
+          </div>
+          <div class="rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-base font-semibold">Break Times</h3>
+                <p class="text-sm text-slate-400">Add optional breaks between slots.</p>
+              </div>
+              <button id="addBreakBtn" class="rounded-2xl bg-slate-700 px-3 py-1 text-sm font-semibold text-white hover:bg-slate-600">Add Break</button>
+            </div>
+            <div id="breaksList" class="mt-4 space-y-3"></div>
+          </div>
+        </section>
+
+        <section id="timetable" class="tab-panel rounded-3xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl">
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 class="text-2xl font-semibold">Timetable</h2>
+              <p class="mt-1 text-sm text-slate-400">Generate and adjust the schedule across days, rooms, and teachers.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button id="generateBtn" class="rounded-2xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400">Generate Timetable</button>
+              <button id="printBtn" class="rounded-2xl border border-slate-700 px-4 py-2 text-sm hover:border-slate-500">Print</button>
+              <button id="exportPngBtn" class="rounded-2xl border border-slate-700 px-4 py-2 text-sm hover:border-slate-500">Export PNG</button>
+              <button id="exportCsvBtn" class="rounded-2xl border border-slate-700 px-4 py-2 text-sm hover:border-slate-500">Export CSV</button>
+            </div>
+          </div>
+
+          <div class="mt-6 space-y-4 rounded-3xl border border-slate-800 bg-slate-950/80 p-4">
+            <div class="grid gap-4 lg:grid-cols-[1fr_250px]">
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="space-y-1 text-sm text-slate-300"><span>View By</span><select id="viewMode" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"><option value="class">Class</option><option value="teacher">Teacher</option><option value="room">Room</option></select></label>
+                <label class="space-y-1 text-sm text-slate-300"><span>Filter</span><input id="filterInput" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="search" placeholder="Course, teacher, class"></label>
+              </div>
+              <div class="grid gap-4 sm:grid-cols-2">
+                <label class="space-y-1 text-sm text-slate-300"><span>Selected Day</span><select id="selectedDay" class="w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"></select></label>
+                <button id="clearConflictBtn" class="h-12 rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-600">Clear Conflicts</button>
+              </div>
+            </div>
+            <div id="timetableNotice" class="rounded-2xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200 hidden"></div>
+          </div>
+
+          <div class="overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/80 p-2">
+            <div id="timetableGrid" class="min-w-[900px]"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div id="toast" class="fixed right-4 bottom-4 z-50 max-w-sm rounded-3xl bg-slate-900/95 px-4 py-3 text-sm text-slate-100 shadow-2xl ring-1 ring-white/10 opacity-0"></div>
+
+  <input id="importFileInput" type="file" accept="application/json" class="hidden" />
+
+  <script>
+    const appState = {
+      settings: {
+        schoolDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'],
+        schoolStartTime: '08:00',
+        schoolEndTime: '16:00',
+        defaultSlotDuration: 60,
+        breaks: []
+      },
+      courses: [],
+      teachers: [],
+      rooms: [],
+      classes: [],
+      schedule: []
+    };
+
+    function addSampleData() {
+      if (appState.courses.length || appState.teachers.length || appState.rooms.length || appState.classes.length) return;
+
+      const mathId = uid();
+      const engId = uid();
+      const teacherId = uid();
+      const roomId = uid();
+      const classId = uid();
+
+      appState.courses.push(
+        { id: mathId, name: 'Mathematics', code: 'MATH101', duration: 60, color: '#38bdf8' },
+        { id: engId, name: 'English', code: 'ENG101', duration: 60, color: '#f472b6' }
+      );
+
+      appState.teachers.push({
+        id: teacherId,
+        name: 'Ms. Adams',
+        assignedCourses: [mathId, engId],
+        availability: {
+          monday: { start: '08:00', end: '16:00' },
+          tuesday: { start: '08:00', end: '16:00' },
+          wednesday: { start: '08:00', end: '16:00' },
+          thursday: { start: '08:00', end: '16:00' },
+          friday: { start: '08:00', end: '16:00' }
+        }
+      });
+
+      appState.rooms.push({ id: roomId, name: 'Room 101', capacity: 30, features: ['Projector', 'Whiteboard'] });
+
+      appState.classes.push({
+        id: classId,
+        name: 'Grade 5A',
+        students: 24,
+        preferredTeachers: [teacherId],
+        requiredCourses: [
+          { courseId: mathId, frequency: 3, durationPerSlot: 60 },
+          { courseId: engId, frequency: 2, durationPerSlot: 60 }
+        ]
+      });
+    }
+
+    const selectors = {
+      tabs: document.querySelectorAll('.tab-button'),
+      panels: document.querySelectorAll('.tab-panel'),
+      coursesList: document.getElementById('coursesList'),
+      teachersList: document.getElementById('teachersList'),
+      roomsList: document.getElementById('roomsList'),
+      classesList: document.getElementById('classesList'),
+      teacherCourses: document.getElementById('teacherCourses'),
+      classTeachers: document.getElementById('classTeachers'),
+      requiredCoursesList: document.getElementById('requiredCoursesList'),
+      breaksList: document.getElementById('breaksList'),
+      selectedDay: document.getElementById('selectedDay'),
+      timetableGrid: document.getElementById('timetableGrid'),
+      timetableNotice: document.getElementById('timetableNotice'),
+      toast: document.getElementById('toast'),
+      filterInput: document.getElementById('filterInput'),
+      viewMode: document.getElementById('viewMode')
+    };
+
+    const form = {
+      courseId: null,
+      teacherId: null,
+      roomId: null,
+      classId: null,
+      editingRequiredCourseId: null
+    };
+
+    function uid() {
+      if (crypto?.randomUUID) return crypto.randomUUID();
+      return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    function showToast(message) {
+      selectors.toast.textContent = message;
+      selectors.toast.classList.add('toast-enter-active');
+      selectors.toast.classList.remove('opacity-0');
+      setTimeout(() => {
+        selectors.toast.classList.add('opacity-0');
+      }, 2200);
+    }
+
+    function parseTime(value) {
+      const [hours, mins] = value.split(':').map(Number);
+      return hours * 60 + mins;
+    }
+
+    function formatTime(minutes) {
+      const h = String(Math.floor(minutes / 60)).padStart(2, '0');
+      const m = String(minutes % 60).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+
+    function isInRange(slotStart, slotEnd, availability) {
+      if (!availability || !availability.start || !availability.end) return false;
+      const start = parseTime(availability.start);
+      const end = parseTime(availability.end);
+      return slotStart >= start && slotEnd <= end;
+    }
+
+    function getAvailableDays() {
+      return Array.from(document.querySelectorAll('.day-checkbox')).filter(input => input.checked).map(input => input.value);
+    }
+
+    function getSlotRows(settings) {
+      const start = parseTime(settings.schoolStartTime);
+      const end = parseTime(settings.schoolEndTime);
+      const step = Number(settings.defaultSlotDuration);
+      const slots = [];
+      for (let time = start; time + step <= end; time += step) {
+        const slotStart = time;
+        const slotEnd = time + step;
+        const inBreak = settings.breaks.some(b => {
+          const breakStart = parseTime(b.start);
+          const breakEnd = parseTime(b.end);
+          return slotStart >= breakStart && slotEnd <= breakEnd;
+        });
+        if (!inBreak) slots.push({ start: slotStart, end: slotEnd });
+      }
+      return slots;
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem('tt_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          Object.assign(appState, parsed);
+          showToast('Loaded saved timetable state');
+        } catch (error) {
+          console.warn('Failed to parse saved state', error);
+        }
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem('tt_data', JSON.stringify(appState));
+      showToast('State saved locally');
+    }
+
+    function clearState() {
+      if (!confirm('Clear all timetable data from localStorage?')) return;
+      localStorage.removeItem('tt_data');
+      Object.assign(appState, {
+        settings: { schoolDays: ['Monday','Tuesday','Wednesday','Thursday','Friday'], schoolStartTime: '08:00', schoolEndTime: '16:00', defaultSlotDuration: 60, breaks: [] },
+        courses: [], teachers: [], rooms: [], classes: [], schedule: []
+      });
+      form.courseId = form.teacherId = form.roomId = form.classId = null;
+      renderAll();
+      showToast('All state cleared');
+    }
+
+    function importJson(file) {
+      const reader = new FileReader();
+      reader.onload = event => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          Object.assign(appState, imported);
+          renderAll();
+          showToast('Imported timetable JSON');
+        } catch (error) {
+          showToast('Invalid JSON file');
+          console.error(error);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportJson() {
+      const blob = new Blob([JSON.stringify(appState, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'timetable-data.json';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      showToast('Exported JSON data');
+    }
+
+    function exportCsv() {
+      if (!appState.schedule.length) return showToast('No schedule available to export');
+      const header = ['Day','Start','End','Course','Teacher','Room','Class'];
+      const rows = appState.schedule.map(event => {
+        const course = appState.courses.find(course => course.id === event.courseId)?.name || 'Unknown';
+        const teacher = appState.teachers.find(teacher => teacher.id === event.teacherId)?.name || 'Unknown';
+        const room = appState.rooms.find(room => room.id === event.roomId)?.name || 'Unknown';
+        const cls = appState.classes.find(cls => cls.id === event.classId)?.name || 'Unknown';
+        return [event.day, event.startTime, event.endTime, course, teacher, room, cls];
+      });
+      const csv = [header.join(','), ...rows.map(r => r.map(v => `"${v.replace(/"/g,'""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'timetable.csv';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      showToast('Exported CSV file');
+    }
+
+    function exportPng() {
+      const grid = document.getElementById('timetableGrid');
+      if (!grid) return;
+      html2canvas(grid, { backgroundColor: '#0f172a' }).then(canvas => {
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'timetable.png';
+        link.click();
+        showToast('Exported PNG image');
+      }).catch(() => showToast('Failed to export PNG'));
+    }
+
+    function renderSelectOptions() {
+      const options = (items) => items.map(item => `<option value="${item.id}">${item.name}</option>`).join('');
+      selectors.teacherCourses.innerHTML = options(appState.courses);
+      selectors.classTeachers.innerHTML = options(appState.teachers);
+      document.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = appState.settings.schoolDays.includes(cb.value));
+      document.getElementById('schoolStartTime').value = appState.settings.schoolStartTime;
+      document.getElementById('schoolEndTime').value = appState.settings.schoolEndTime;
+      document.getElementById('defaultSlotDuration').value = appState.settings.defaultSlotDuration;
+      renderBreaks();
+      const dayOptions = appState.settings.schoolDays.map(day => `<option value="${day}">${day}</option>`).join('');
+      selectors.selectedDay.innerHTML = dayOptions;
+      if (!appState.settings.schoolDays.includes(selectors.selectedDay.value)) selectors.selectedDay.selectedIndex = 0;
+    }
+
+    function renderCourses() {
+      const list = appState.courses.map(course => {
+        return `
+          <div class="rounded-3xl border border-slate-800 bg-slate-950 p-4">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p class="font-semibold text-slate-100">${course.name}</p>
+                <p class="text-sm text-slate-400">${course.code} • ${course.duration} min</p>
+              </div>
+              <span class="h-8 w-8 rounded-full border border-slate-700" style="background:${course.color}"></span>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button data-id="${course.id}" class="edit-course rounded-2xl bg-slate-700 px-3 py-1 text-xs font-semibold hover:bg-slate-600">Edit</button>
+              <button data-id="${course.id}" class="delete-course rounded-2xl bg-rose-600 px-3 py-1 text-xs font-semibold hover:bg-rose-500">Delete</button>
+            </div>
+          </div>`;
+      }).join('');
+      selectors.coursesList.innerHTML = list || '<p class="text-sm text-slate-500">No courses defined yet.</p>';
+    }
+
+    function renderTeachers() {
+      const list = appState.teachers.map(teacher => `
+        <div class="rounded-3xl border border-slate-800 bg-slate-950 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="font-semibold text-slate-100">${teacher.name}</p>
+              <p class="text-sm text-slate-400">Courses: ${teacher.assignedCourses.map(id => appState.courses.find(c => c.id === id)?.code || 'N/A').join(', ') || 'None'}</p>
+            </div>
+            <div class="text-right text-sm text-slate-400">${teacherAvailabilitySummary(teacher)}</div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-id="${teacher.id}" class="edit-teacher rounded-2xl bg-slate-700 px-3 py-1 text-xs font-semibold hover:bg-slate-600">Edit</button>
+            <button data-id="${teacher.id}" class="delete-teacher rounded-2xl bg-rose-600 px-3 py-1 text-xs font-semibold hover:bg-rose-500">Delete</button>
+          </div>
+        </div>`).join('');
+      selectors.teachersList.innerHTML = list || '<p class="text-sm text-slate-500">No teachers defined yet.</p>';
+    }
+
+    function teacherAvailabilitySummary(teacher) {
+      const days = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+      return days.map(day => {
+        const avail = teacher.availability[day.toLowerCase()];
+        return avail && avail.start && avail.end ? `${day.slice(0,3)}:${avail.start}-${avail.end}` : `${day.slice(0,3)}:Off`;
+      }).join(' ');
+    }
+
+    function renderRooms() {
+      const list = appState.rooms.map(room => `
+        <div class="rounded-3xl border border-slate-800 bg-slate-950 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="font-semibold text-slate-100">${room.name}</p>
+              <p class="text-sm text-slate-400">Capacity ${room.capacity}</p>
+            </div>
+            <div class="text-sm text-slate-400">${room.features.join(', ') || 'No features'}</div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-id="${room.id}" class="edit-room rounded-2xl bg-slate-700 px-3 py-1 text-xs font-semibold hover:bg-slate-600">Edit</button>
+            <button data-id="${room.id}" class="delete-room rounded-2xl bg-rose-600 px-3 py-1 text-xs font-semibold hover:bg-rose-500">Delete</button>
+          </div>
+        </div>`).join('');
+      selectors.roomsList.innerHTML = list || '<p class="text-sm text-slate-500">No rooms defined yet.</p>';
+    }
+
+    function renderClasses() {
+      const list = appState.classes.map(cls => `
+        <div class="rounded-3xl border border-slate-800 bg-slate-950 p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="font-semibold text-slate-100">${cls.name}</p>
+              <p class="text-sm text-slate-400">${cls.students} students</p>
+            </div>
+            <div class="text-sm text-slate-400">Preferred: ${cls.preferredTeachers.map(id => appState.teachers.find(t => t.id === id)?.name).filter(Boolean).join(', ') || 'None'}</div>
+          </div>
+          <div class="mt-3 space-y-2 text-sm text-slate-400">
+            ${cls.requiredCourses.map(requirement => {
+              const course = appState.courses.find(c => c.id === requirement.courseId);
+              return `<div>${course?.code || 'Unknown'} × ${requirement.frequency} × ${requirement.durationPerSlot}min</div>`;
+            }).join('')}
+          </div>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button data-id="${cls.id}" class="edit-class rounded-2xl bg-slate-700 px-3 py-1 text-xs font-semibold hover:bg-slate-600">Edit</button>
+            <button data-id="${cls.id}" class="delete-class rounded-2xl bg-rose-600 px-3 py-1 text-xs font-semibold hover:bg-rose-500">Delete</button>
+          </div>
+        </div>`).join('');
+      selectors.classesList.innerHTML = list || '<p class="text-sm text-slate-500">No classes defined yet.</p>';
+    }
+
+    function renderRequiredCourses() {
+      const list = appState.courses.map(course => `
+        <option value="${course.id}">${course.name} (${course.code})</option>`).join('');
+      selectors.requiredCoursesList.dataset.template = `<div class="required-course-row grid gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-3"><select class=\"req-course w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400\">${list}</select><div class=\"grid gap-2 sm:grid-cols-2\"><input class=\"req-frequency rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400\" type=\"number\" min=\"1\" value=\"1\"><input class=\"req-duration rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400\" type=\"number\" min=\"30\" step=\"30\" value=\"60\"></div><button class=\"remove-required-course rounded-2xl bg-rose-600 px-3 py-2 text-sm font-semibold hover:bg-rose-500\">Remove</button></div>`;
+      if (appState.courses.length === 0) {
+        selectors.requiredCoursesList.innerHTML = '<p class="text-sm text-slate-500">Define courses first.</p>';
+        return;
+      }
+      if (!selectors.requiredCoursesList.hasChildNodes()) {
+        selectors.requiredCoursesList.innerHTML = '';
+      }
+    }
+
+    function renderBreaks() {
+      selectors.breaksList.innerHTML = appState.settings.breaks.map((breakItem, index) => `
+        <div class="grid gap-3 sm:grid-cols-[1fr_auto] rounded-2xl border border-slate-800 bg-slate-950 p-3">
+          <div class="grid gap-2 sm:grid-cols-2">
+            <label class="space-y-1 text-sm text-slate-300"><span>Break start</span><input data-index="${index}" data-field="start" class="break-time w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="time" value="${breakItem.start}" /></label>
+            <label class="space-y-1 text-sm text-slate-300"><span>Break end</span><input data-index="${index}" data-field="end" class="break-time w-full rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="time" value="${breakItem.end}" /></label>
+          </div>
+          <button data-index="${index}" class="remove-break rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold hover:bg-rose-500">Remove</button>
+        </div>`).join('');
+    }
+
+    function renderSchedule() {
+      const days = appState.settings.schoolDays;
+      const slots = getSlotRows(appState.settings);
+      const selectedDay = selectors.selectedDay.value || days[0];
+      const filterText = selectors.filterInput.value.trim().toLowerCase();
+      const mode = selectors.viewMode.value;
+      const schedule = appState.schedule.filter(event => {
+        if (!filterText) return true;
+        const course = appState.courses.find(course => course.id === event.courseId)?.name || '';
+        const teacher = appState.teachers.find(teacher => teacher.id === event.teacherId)?.name || '';
+        const room = appState.rooms.find(room => room.id === event.roomId)?.name || '';
+        const cls = appState.classes.find(cls => cls.id === event.classId)?.name || '';
+        return [course, teacher, room, cls].some(value => value.toLowerCase().includes(filterText));
+      });
+      const dayEvents = days.reduce((map, day) => ({ ...map, [day]: schedule.filter(event => event.day === day) }), {});
+      const table = [`<div class="overflow-x-auto"><table class="min-w-full border-collapse text-left text-sm"><thead><tr><th class="border-b border-slate-800 px-3 py-3 text-slate-400">Time</th>${days.map(day => `<th class="border-b border-slate-800 px-3 py-3 text-slate-400">${day}</th>`).join('')}</tr></thead><tbody>`];
+
+      slots.forEach(slot => {
+        table.push(`<tr><td class="border-t border-slate-800 px-3 py-3 text-slate-300">${formatTime(slot.start)} - ${formatTime(slot.end)}</td>`);
+        days.forEach(day => {
+          const event = dayEvents[day].find(item => item.startTime === formatTime(slot.start));
+          if (!event) {
+            table.push(`<td class="border-t border-slate-800 px-3 py-3 align-top"><div class="min-h-[80px] rounded-3xl border border-dashed border-slate-800 bg-slate-950/70 p-2 slot-cell" data-day="${day}" data-time="${formatTime(slot.start)}"></div></td>`);
+            return;
+          }
+          const course = appState.courses.find(course => course.id === event.courseId);
+          const teacher = appState.teachers.find(teacher => teacher.id === event.teacherId);
+          const room = appState.rooms.find(room => room.id === event.roomId);
+          const cls = appState.classes.find(cls => cls.id === event.classId);
+          const label = course ? course.name : 'Unknown';
+          const color = course?.color || '#38bdf8';
+          table.push(`<td class="border-t border-slate-800 px-3 py-3 align-top"><div draggable="true" data-event-id="${event.id}" class="event-card rounded-3xl border border-slate-700 p-3 shadow-xl transition hover:shadow-2xl" style="background:${color}1a;border-color:${color};"><p class="font-semibold text-slate-100">${label}</p><p class="text-[11px] text-slate-200">${cls?.name || 'Class'} • ${teacher?.name || 'Teacher'}</p><p class="text-[11px] text-slate-200">${room?.name || 'Room'}</p></div></td>`);
+        });
+        table.push('</tr>');
+      });
+      table.push('</tbody></table></div>');
+      selectors.timetableGrid.innerHTML = table.join('');
+      attachDragEvents();
+    }
+
+    function attachDragEvents() {
+      document.querySelectorAll('.event-card').forEach(card => {
+        card.addEventListener('dragstart', event => {
+          event.dataTransfer.setData('text/plain', event.currentTarget.dataset.eventId);
+        });
+      });
+      document.querySelectorAll('.slot-cell').forEach(cell => {
+        cell.addEventListener('dragover', event => {
+          event.preventDefault();
+          cell.classList.add('ring','ring-sky-400/60');
+        });
+        cell.addEventListener('dragleave', () => {
+          cell.classList.remove('ring','ring-sky-400/60');
+        });
+        cell.addEventListener('drop', event => {
+          event.preventDefault();
+          cell.classList.remove('ring','ring-sky-400/60');
+          const eventId = event.dataTransfer.getData('text/plain');
+          const scheduleEvent = appState.schedule.find(item => item.id === eventId);
+          if (!scheduleEvent) return;
+          const day = cell.dataset.day;
+          const startTime = cell.dataset.time;
+          const endTime = formatTime(parseTime(startTime) + Number(appState.settings.defaultSlotDuration));
+          if (!canMoveEvent(scheduleEvent, day, startTime, endTime)) {
+            showToast('Cannot move event due to resource conflict');
+            return;
+          }
+          scheduleEvent.day = day;
+          scheduleEvent.startTime = startTime;
+          scheduleEvent.endTime = endTime;
+          saveState();
+          renderSchedule();
+        });
+      });
+    }
+
+    function canMoveEvent(targetEvent, day, startTime, endTime) {
+      const slotStart = parseTime(startTime);
+      const slotEnd = parseTime(endTime);
+      const teacherId = targetEvent.teacherId;
+      const roomId = targetEvent.roomId;
+      const classId = targetEvent.classId;
+      const teacher = appState.teachers.find(t => t.id === teacherId);
+      const availability = teacher?.availability[day.toLowerCase()];
+      if (!isInRange(slotStart, slotEnd, availability)) return false;
+      return !appState.schedule.some(event => event.id !== targetEvent.id && event.day === day && event.startTime === startTime && (event.teacherId === teacherId || event.roomId === roomId || event.classId === classId));
+    }
+
+    function generateSchedule() {
+      const missing = [];
+      if (!appState.courses.length) missing.push('course');
+      if (!appState.teachers.length) missing.push('teacher');
+      if (!appState.rooms.length) missing.push('room');
+      if (!appState.classes.length) missing.push('class');
+      if (missing.length) {
+        selectors.timetableNotice.textContent = `Add at least one ${missing.join(', ')} before generating the schedule.`;
+        selectors.timetableNotice.classList.remove('hidden');
+        return;
+      }
+      selectors.timetableNotice.classList.add('hidden');
+      const slots = getSlotRows(appState.settings);
+      const days = appState.settings.schoolDays;
+      const events = [];
+      const failures = [];
+      const sessions = [];
+      appState.classes.forEach(cls => {
+        cls.requiredCourses.forEach(req => {
+          const course = appState.courses.find(course => course.id === req.courseId);
+          if (!course) return;
+          for (let i = 0; i < req.frequency; i++) {
+            sessions.push({ classId: cls.id, courseId: req.courseId, duration: req.durationPerSlot, preferredTeachers: cls.preferredTeachers.slice() });
+          }
+        });
+      });
+      sessions.sort((a,b) => b.duration - a.duration);
+      const sortedRooms = [...appState.rooms].sort((a,b) => a.capacity - b.capacity);
+      sessions.forEach(session => {
+        const course = appState.courses.find(course => course.id === session.courseId);
+        const cls = appState.classes.find(cls => cls.id === session.classId);
+        const teacherCandidates = [...session.preferredTeachers, ...appState.teachers.filter(t => t.assignedCourses.includes(session.courseId) && !session.preferredTeachers.includes(t.id)).map(t => t.id)];
+        let assigned = false;
+        for (const day of days) {
+          for (const slot of slots) {
+            const start = formatTime(slot.start);
+            const end = formatTime(slot.end);
+            for (const teacherId of teacherCandidates) {
+              const teacher = appState.teachers.find(t => t.id === teacherId);
+              const availability = teacher?.availability[day.toLowerCase()];
+              if (!isInRange(slot.start, slot.end, availability)) continue;
+              const room = sortedRooms.find(room => room.capacity >= cls.students);
+              if (!room) continue;
+              const conflict = events.some(event => event.day === day && event.startTime === start && (event.teacherId === teacherId || event.roomId === room.id || event.classId === cls.id));
+              if (conflict) continue;
+              events.push({ id: uid(), day, startTime: start, endTime: end, courseId: course.id, teacherId, roomId: room.id, classId: cls.id });
+              assigned = true;
+              break;
+            }
+            if (assigned) break;
+          }
+          if (assigned) break;
+        }
+        if (!assigned) failures.push(`${course.code || course.name} for ${cls.name}`);
+      });
+      appState.schedule = events;
+      saveState();
+      renderSchedule();
+      if (failures.length) {
+        selectors.timetableNotice.textContent = `Some sessions could not be scheduled: ${failures.join(', ')}`;
+        selectors.timetableNotice.classList.remove('hidden');
+      } else {
+        selectors.timetableNotice.textContent = 'Timetable generated successfully.';
+        selectors.timetableNotice.classList.remove('hidden');
+      }
+    }
+
+    function setActiveTab(tabName) {
+      selectors.tabs.forEach(button => button.classList.toggle('active', button.dataset.tab === tabName));
+      selectors.panels.forEach(panel => panel.classList.toggle('active', panel.id === tabName));
+    }
+
+    function attachGlobalEvents() {
+      document.querySelectorAll('.tab-button').forEach(button => button.addEventListener('click', () => setActiveTab(button.dataset.tab)));
+      document.getElementById('saveStateBtn').addEventListener('click', saveState);
+      document.getElementById('clearStateBtn').addEventListener('click', clearState);
+      document.getElementById('exportJsonBtn').addEventListener('click', exportJson);
+      document.getElementById('importJsonBtn').addEventListener('click', () => document.getElementById('importFileInput').click());
+      document.getElementById('importFileInput').addEventListener('change', e => { if (e.target.files.length) importJson(e.target.files[0]); });
+      document.getElementById('addRequiredCourseBtn').addEventListener('click', addRequiredCourseInput);
+      document.getElementById('addBreakBtn').addEventListener('click', () => {
+        appState.settings.breaks.push({ start: '10:30', end: '11:00' });
+        renderBreaks();
+      });
+      document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+      document.getElementById('generateBtn').addEventListener('click', generateSchedule);
+      document.getElementById('printBtn').addEventListener('click', () => window.print());
+      document.getElementById('exportPngBtn').addEventListener('click', exportPng);
+      document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+      selectors.filterInput.addEventListener('input', renderSchedule);
+      selectors.viewMode.addEventListener('change', renderSchedule);
+      selectors.selectedDay.addEventListener('change', renderSchedule);
+      document.getElementById('saveCourseBtn').addEventListener('click', saveCourse);
+      document.getElementById('saveTeacherBtn').addEventListener('click', saveTeacher);
+      document.getElementById('saveRoomBtn').addEventListener('click', saveRoom);
+      document.getElementById('saveClassBtn').addEventListener('click', saveClass);
+      document.getElementById('addCourseBtn').addEventListener('click', () => setActiveTab('courses'));
+      document.getElementById('addTeacherBtn').addEventListener('click', () => setActiveTab('teachers'));
+      document.getElementById('addRoomBtn').addEventListener('click', () => setActiveTab('rooms'));
+      document.getElementById('addClassBtn').addEventListener('click', () => setActiveTab('classes'));
+      document.body.addEventListener('click', event => {
+        if (event.target.matches('.delete-course')) deleteCourse(event.target.dataset.id);
+        if (event.target.matches('.edit-course')) editCourse(event.target.dataset.id);
+        if (event.target.matches('.delete-teacher')) deleteTeacher(event.target.dataset.id);
+        if (event.target.matches('.edit-teacher')) editTeacher(event.target.dataset.id);
+        if (event.target.matches('.delete-room')) deleteRoom(event.target.dataset.id);
+        if (event.target.matches('.edit-room')) editRoom(event.target.dataset.id);
+        if (event.target.matches('.delete-class')) deleteClass(event.target.dataset.id);
+        if (event.target.matches('.edit-class')) editClass(event.target.dataset.id);
+        if (event.target.matches('.remove-required-course')) event.target.closest('.required-course-row')?.remove();
+        if (event.target.matches('.remove-break')) {
+          const idx = Number(event.target.dataset.index);
+          appState.settings.breaks.splice(idx, 1);
+          renderBreaks();
+        }
+      });
+      selectors.breaksList.addEventListener('change', event => {
+        if (!event.target.classList.contains('break-time')) return;
+        const index = Number(event.target.dataset.index);
+        const field = event.target.dataset.field;
+        appState.settings.breaks[index][field] = event.target.value;
+      });
+    }
+
+    function saveCourse() {
+      const name = document.getElementById('courseName').value.trim();
+      const code = document.getElementById('courseCode').value.trim();
+      const duration = Number(document.getElementById('courseDuration').value);
+      const color = document.getElementById('courseColor').value;
+      if (!name || !code || !duration) return showToast('Complete the course form');
+      if (form.courseId) {
+        const course = appState.courses.find(item => item.id === form.courseId);
+        Object.assign(course, { name, code, duration, color });
+        form.courseId = null;
+      } else {
+        appState.courses.push({ id: uid(), name, code, duration, color });
+      }
+      document.getElementById('courseName').value = '';
+      document.getElementById('courseCode').value = '';
+      document.getElementById('courseDuration').value = 60;
+      document.getElementById('courseColor').value = '#38bdf8';
+      renderAll();
+      saveState();
+    }
+
+    function saveTeacher() {
+      const name = document.getElementById('teacherName').value.trim();
+      const assignedCourses = Array.from(selectors.teacherCourses.selectedOptions).map(opt => opt.value);
+      const availability = {
+        monday: parseAvailability('teacherAvailMon'),
+        tuesday: parseAvailability('teacherAvailTue'),
+        wednesday: parseAvailability('teacherAvailWed'),
+        thursday: parseAvailability('teacherAvailThu'),
+        friday: parseAvailability('teacherAvailFri')
+      };
+      if (!name) return showToast('Add a teacher name');
+      const value = { id: form.teacherId || uid(), name, assignedCourses, availability };
+      if (form.teacherId) {
+        const record = appState.teachers.find(item => item.id === form.teacherId);
+        Object.assign(record, value);
+        form.teacherId = null;
+      } else {
+        appState.teachers.push(value);
+      }
+      document.getElementById('teacherName').value = '';
+      document.getElementById('teacherCourses').selectedIndex = -1;
+      ['teacherAvailMon','teacherAvailTue','teacherAvailWed','teacherAvailThu','teacherAvailFri'].forEach(id => document.getElementById(id).value = '');
+      renderAll();
+      saveState();
+    }
+
+    function parseAvailability(id) {
+      const text = document.getElementById(id).value.trim();
+      const [start,end] = text.split('-').map(v => v.trim());
+      return { start: start || '', end: end || '' };
+    }
+
+    function saveRoom() {
+      const name = document.getElementById('roomName').value.trim();
+      const capacity = Number(document.getElementById('roomCapacity').value);
+      const features = document.getElementById('roomFeatures').value.split(',').map(t => t.trim()).filter(Boolean);
+      if (!name || !capacity) return showToast('Complete the room form');
+      const value = { id: form.roomId || uid(), name, capacity, features };
+      if (form.roomId) {
+        const record = appState.rooms.find(item => item.id === form.roomId);
+        Object.assign(record, value);
+        form.roomId = null;
+      } else {
+        appState.rooms.push(value);
+      }
+      document.getElementById('roomName').value = '';
+      document.getElementById('roomCapacity').value = 30;
+      document.getElementById('roomFeatures').value = '';
+      renderAll();
+      saveState();
+    }
+
+    function saveClass() {
+      const name = document.getElementById('className').value.trim();
+      const students = Number(document.getElementById('classStudents').value);
+      const preferredTeachers = Array.from(selectors.classTeachers.selectedOptions).map(opt => opt.value);
+      const requiredCourses = Array.from(selectors.requiredCoursesList.querySelectorAll('.req-course')).map((select, index) => ({
+        courseId: select.value,
+        frequency: Number(select.closest('div').querySelector('.req-frequency').value),
+        durationPerSlot: Number(select.closest('div').querySelector('.req-duration').value)
+      })).filter(item => item.courseId && item.frequency > 0 && item.durationPerSlot > 0);
+      if (!name || !students || !requiredCourses.length) return showToast('Complete the class form with required courses');
+      const value = { id: form.classId || uid(), name, students, requiredCourses, preferredTeachers };
+      if (form.classId) {
+        const record = appState.classes.find(item => item.id === form.classId);
+        Object.assign(record, value);
+        form.classId = null;
+      } else {
+        appState.classes.push(value);
+      }
+      document.getElementById('className').value = '';
+      document.getElementById('classStudents').value = 25;
+      selectors.classTeachers.selectedIndex = -1;
+      selectors.requiredCoursesList.innerHTML = '';
+      renderAll();
+      saveState();
+    }
+
+    function saveSettings() {
+      const days = getAvailableDays();
+      if (!days.length) return showToast('Select at least one school day');
+      appState.settings.schoolDays = days;
+      appState.settings.schoolStartTime = document.getElementById('schoolStartTime').value;
+      appState.settings.schoolEndTime = document.getElementById('schoolEndTime').value;
+      appState.settings.defaultSlotDuration = Number(document.getElementById('defaultSlotDuration').value);
+      renderAll();
+      saveState();
+      showToast('Settings updated');
+    }
+
+    function editCourse(id) {
+      const course = appState.courses.find(item => item.id === id);
+      if (!course) return;
+      document.getElementById('courseName').value = course.name;
+      document.getElementById('courseCode').value = course.code;
+      document.getElementById('courseDuration').value = course.duration;
+      document.getElementById('courseColor').value = course.color;
+      form.courseId = id;
+      setActiveTab('courses');
+    }
+
+    function deleteCourse(id) {
+      if (!confirm('Delete this course?')) return;
+      appState.courses = appState.courses.filter(item => item.id !== id);
+      appState.teachers.forEach(teacher => teacher.assignedCourses = teacher.assignedCourses.filter(cid => cid !== id));
+      appState.classes.forEach(cls => cls.requiredCourses = cls.requiredCourses.filter(req => req.courseId !== id));
+      saveState();
+      renderAll();
+    }
+
+    function editTeacher(id) {
+      const teacher = appState.teachers.find(item => item.id === id);
+      if (!teacher) return;
+      document.getElementById('teacherName').value = teacher.name;
+      Array.from(selectors.teacherCourses.options).forEach(opt => opt.selected = teacher.assignedCourses.includes(opt.value));
+      Object.entries(teacher.availability).forEach(([day, interval]) => {
+        if (!interval) return;
+        const input = document.getElementById(`teacherAvail${day.charAt(0).toUpperCase()+day.slice(1,3)}`);
+        if (input) input.value = interval.start && interval.end ? `${interval.start}-${interval.end}` : '';
+      });
+      form.teacherId = id;
+      setActiveTab('teachers');
+    }
+
+    function deleteTeacher(id) {
+      if (!confirm('Delete this teacher?')) return;
+      appState.teachers = appState.teachers.filter(item => item.id !== id);
+      saveState(); renderAll();
+    }
+
+    function editRoom(id) {
+      const room = appState.rooms.find(item => item.id === id);
+      if (!room) return;
+      document.getElementById('roomName').value = room.name;
+      document.getElementById('roomCapacity').value = room.capacity;
+      document.getElementById('roomFeatures').value = room.features.join(', ');
+      form.roomId = id;
+      setActiveTab('rooms');
+    }
+
+    function deleteRoom(id) {
+      if (!confirm('Delete this room?')) return;
+      appState.rooms = appState.rooms.filter(item => item.id !== id);
+      saveState(); renderAll();
+    }
+
+    function editClass(id) {
+      const cls = appState.classes.find(item => item.id === id);
+      if (!cls) return;
+      document.getElementById('className').value = cls.name;
+      document.getElementById('classStudents').value = cls.students;
+      Array.from(selectors.classTeachers.options).forEach(opt => opt.selected = cls.preferredTeachers.includes(opt.value));
+      selectors.requiredCoursesList.innerHTML = cls.requiredCourses.map(req => {
+        const courseOptions = appState.courses.map(course => `<option value="${course.id}" ${course.id === req.courseId ? 'selected' : ''}>${course.name} (${course.code})</option>`).join('');
+        return `<div class="grid gap-2 rounded-2xl border border-slate-800 bg-slate-900 p-3"><select class="req-course w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400">${courseOptions}</select><div class="grid gap-2 sm:grid-cols-2"><input class="req-frequency rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="1" value="${req.frequency}"><input class="req-duration rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400" type="number" min="30" step="30" value="${req.durationPerSlot}"></div><button class="remove-required-course rounded-2xl bg-rose-600 px-3 py-2 text-sm font-semibold hover:bg-rose-500">Remove</button></div>`;
+      }).join('');
+      form.classId = id;
+      setActiveTab('classes');
+    }
+
+    function deleteClass(id) {
+      if (!confirm('Delete this class?')) return;
+      appState.classes = appState.classes.filter(item => item.id !== id);
+      saveState(); renderAll();
+    }
+
+    function addRequiredCourseInput() {
+      if (!appState.courses.length) return showToast('Add courses first');
+      const template = selectors.requiredCoursesList.dataset.template;
+      if (!template) return;
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = template;
+      selectors.requiredCoursesList.appendChild(wrapper.firstElementChild);
+    }
+
+    function renderAll() {
+      renderSelectOptions();
+      renderRequiredCourses();
+      renderCourses();
+      renderTeachers();
+      renderRooms();
+      renderClasses();
+      renderSchedule();
+    }
+
+    function initialize() {
+      const saved = localStorage.getItem('tt_data');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          Object.assign(appState, parsed);
+        } catch (err) {
+          console.warn('Load failed', err);
+        }
+      }
+      if (!appState.courses.length && !appState.teachers.length && !appState.rooms.length && !appState.classes.length) {
+        addSampleData();
+      }
+      attachGlobalEvents();
+      renderAll();
+      setActiveTab('courses');
+    }
+
+    initialize();
+  </script>
+</body>
+</html>

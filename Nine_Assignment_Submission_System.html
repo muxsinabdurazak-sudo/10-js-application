@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssignHub - Submission System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .view { display: none; opacity: 0; transition: opacity 0.3s ease-in; }
+        .view.active { display: block; opacity: 1; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-900">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-blue-800 shadow-lg fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <a href="#" onclick="navigate('dashboard')" class="flex-shrink-0 flex items-center">
+                    <i class="fas fa-graduation-cap text-blue-200 text-2xl mr-2"></i>
+                    <span class="font-bold text-xl text-white">AssignHub</span>
+                </a>
+                <div class="flex items-center space-x-4" id="nav-links"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="pt-20 pb-10 min-h-screen">
+        
+        <!-- Auth View -->
+        <div id="view-auth" class="view max-w-md mx-auto mt-10">
+            <div class="bg-white p-8 border rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-center text-blue-800">Welcome to AssignHub</h2>
+                <div id="auth-error" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm"></div>
+                
+                <!-- Login Form -->
+                <form id="form-login" onsubmit="handleLogin(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="login-email" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="login-password" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Login</button>
+                    <p class="text-center text-sm text-gray-600 mt-4">Don't have an account? <a href="#" onclick="toggleAuthForm('register')" class="text-blue-600 font-bold hover:underline">Register here</a></p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="form-register" class="hidden" onsubmit="handleRegister(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Full Name</label>
+                        <input type="text" id="reg-name" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="reg-email" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="reg-password" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Role</label>
+                        <select id="reg-role" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="student">Student</option>
+                            <option value="instructor">Instructor</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Create Account</button>
+                    <p class="text-center text-sm text-gray-600 mt-4">Already have an account? <a href="#" onclick="toggleAuthForm('login')" class="text-blue-600 font-bold hover:underline">Login here</a></p>
+                </form>
+
+                <div class="mt-6 pt-4 border-t text-xs text-gray-500 text-center">
+                    <p class="font-bold mb-1">Demo Accounts (Password: pass)</p>
+                    <p>Instructor: prof@uni.edu</p>
+                    <p>Student: student@uni.edu</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard View -->
+        <div id="view-dashboard" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6" id="dash-title">Dashboard</h2>
+            <div id="dash-content"><!-- Dashboard widgets injected --></div>
+        </div>
+
+        <!-- Course Detail View (Assignments List) -->
+        <div id="view-course" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <button onclick="navigate('dashboard')" class="text-blue-600 hover:underline text-sm mb-2 inline-block"><i class="fas fa-arrow-left mr-1"></i> Back to Dashboard</button>
+                    <h2 class="text-3xl font-bold text-gray-800" id="course-title">Course Name</h2>
+                    <p class="text-gray-600" id="course-desc"></p>
+                </div>
+                <div id="course-actions"><!-- Instructor actions injected --></div>
+            </div>
+            <div id="assignments-list" class="space-y-4"><!-- Assignments injected --></div>
+        </div>
+
+        <!-- Assignment Detail View (Submit / View Submissions) -->
+        <div id="view-assignment" class="view max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <button onclick="navigateBackToCourse()" class="text-blue-600 hover:underline text-sm mb-4 inline-block"><i class="fas fa-arrow-left mr-1"></i> Back to Course</button>
+            <div class="bg-white p-6 rounded-lg shadow-md border border-gray-100 mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2" id="assign-title">Assignment Title</h2>
+                <div class="flex space-x-4 text-sm text-gray-600 mb-4">
+                    <span><i class="fas fa-calendar mr-1"></i> Due: <span id="assign-due"></span></span>
+                    <span><i class="fas fa-star mr-1"></i> Points: <span id="assign-points"></span></span>
+                </div>
+                <p class="text-gray-700 mb-4 whitespace-pre-line" id="assign-desc"></p>
+                
+                <!-- Student View -->
+                <div id="assign-student-zone" class="hidden border-t pt-4 mt-4">
+                    <h3 class="font-bold text-lg mb-2">Your Submission</h3>
+                    <div id="submission-status"></div>
+                    <div id="submission-form" class="mt-4">
+                        <textarea id="sub-comments" rows="3" placeholder="Add comments (optional)..." class="w-full px-3 py-2 border rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        <div class="flex items-center space-x-2">
+                            <input type="file" id="sub-file" class="flex-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                            <button onclick="submitAssignment()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Submit</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Instructor View -->
+                <div id="assign-instructor-zone" class="hidden border-t pt-4 mt-4">
+                    <h3 class="font-bold text-lg mb-4">Submissions</h3>
+                    <div id="submissions-list" class="space-y-3"><!-- Student submissions list --></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Generic Modal Structure -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-5 border-b">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800"></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="modal-body" class="p-6"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA LAYER (Mock DB with LocalStorage) ---
+        const DB = {
+            users: 'as_users',
+            courses: 'as_courses',
+            enrollments: 'as_enrollments',
+            assignments: 'as_assignments',
+            submissions: 'as_submissions',
+            token: 'as_token'
+        };
+
+        const getData = (key) => JSON.parse(localStorage.getItem(key)) || [];
+        const setData = (key, val) => localStorage.setItem(key, JSON.stringify(val));
+        
+        const getCurrentUser = () => {
+            const token = localStorage.getItem(DB.token);
+            return token ? JSON.parse(token) : null;
+        };
+        const setCurrentUser = (user) => user ? localStorage.setItem(DB.token, JSON.stringify(user)) : localStorage.removeItem(DB.token);
+
+        // State variables for navigation
+        let currentCourseId = null;
+        let currentAssignmentId = null;
+
+        // Seed Data
+        function initDB() {
+            if (getData(DB.users).length === 0) {
+                const users = [
+                    { id: 'u1', email: 'prof@uni.edu', password: 'pass', firstName: 'Dr. Smith', role: 'instructor' },
+                    { id: 'u2', email: 'student@uni.edu', password: 'pass', firstName: 'Alice', role: 'student' }
+                ];
+                setData(DB.users, users);
+
+                const courses = [
+                    { id: 'c1', instructorId: 'u1', name: 'Intro to Computer Science', description: 'Fundamentals of programming.' }
+                ];
+                setData(DB.courses, courses);
+
+                const enrollments = [
+                    { id: 'e1', studentId: 'u2', courseId: 'c1' }
+                ];
+                setData(DB.enrollments, enrollments);
+
+                const assignments = [
+                    { id: 'a1', courseId: 'c1', title: 'Hello World', description: 'Write your first program in Python.\n\nEnsure it prints "Hello, World!" to the console.', dueDate: '2024-12-01T23:59', maxPoints: 50 }
+                ];
+                setData(DB.assignments, assignments);
+            }
+        }
+
+        // --- UI/ROUTING ---
+        function navigate(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const el = document.getElementById(`view-${view}`);
+            if (el) el.classList.add('active');
+            updateNavbar();
+            
+            // Render data based on view
+            if (view === 'dashboard') renderDashboard();
+            if (view === 'course') renderCourseDetail();
+            if (view === 'assignment') renderAssignmentDetail();
+        }
+
+        function updateNavbar() {
+            const user = getCurrentUser();
+            const nav = document.getElementById('nav-links');
+            if (!user) {
+                nav.innerHTML = `<span class="text-blue-200 text-sm">Guest Mode</span>`;
+                return;
+            }
+            nav.innerHTML = `
+                <a href="#" onclick="navigate('dashboard')" class="text-blue-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-home mr-1"></i> Dashboard</a>
+                <span class="text-white font-medium px-3 py-2 text-sm"><i class="fas fa-user mr-1"></i> ${user.firstName} (${user.role})</span>
+                <button onclick="logout()" class="bg-blue-900 text-blue-200 px-4 py-2 rounded-lg text-sm hover:bg-blue-950">Logout</button>
+            `;
+        }
+
+        // --- AUTH ---
+        function toggleAuthForm(formType) {
+            document.getElementById('form-login').classList.toggle('hidden', formType !== 'login');
+            document.getElementById('form-register').classList.toggle('hidden', formType !== 'register');
+            document.getElementById('auth-error').classList.add('hidden');
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+
+            const users = getData(DB.users);
+            const user = users.find(u => u.email === email && u.password === pass);
+
+            if (user) {
+                setCurrentUser(user);
+                navigate('dashboard');
+            } else {
+                document.getElementById('auth-error').classList.remove('hidden');
+                document.getElementById('auth-error').textContent = 'Invalid email or password.';
+            }
+        }
+
+        function handleRegister(e) {
+            e.preventDefault();
+            const firstName = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+
+            let users = getData(DB.users);
+            if (users.find(u => u.email === email)) {
+                document.getElementById('auth-error').classList.remove('hidden');
+                document.getElementById('auth-error').textContent = 'An account with this email already exists.';
+                return;
+            }
+
+            const newUser = { id: 'u' + Date.now(), email, password: pass, firstName, role };
+            users.push(newUser);
+            setData(DB.users, users);
+            
+            setCurrentUser(newUser);
+            navigate('dashboard');
+        }
+
+        function logout() {
+            setCurrentUser(null);
+            navigate('auth');
+            toggleAuthForm('login');
+        }
+
+        // --- HELPER ---
+        function formatDate(dateStr) {
+            if(!dateStr) return 'No Date';
+            const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateStr).toLocaleDateString(undefined, options);
+        }
+
+        // --- DASHBOARD ---
+        function renderDashboard() {
+            const user = getCurrentUser();
+            if (!user) return;
+            const courses = getData(DB.courses);
+            const enrollments = getData(DB.enrollments);
+            const assignments = getData(DB.assignments);
+            const submissions = getData(DB.submissions);
+
+            document.getElementById('dash-title').textContent = user.role === 'instructor' ? 'Instructor Dashboard' : 'Student Dashboard';
+            let html = '';
+
+            if (user.role === 'instructor') {
+                const myCourses = courses.filter(c => c.instructorId === user.id);
+                const pendingSubs = submissions.filter(s => s.grade === null && assignments.find(a => a.id === s.assignmentId && myCourses.find(c => c.id === a.courseId)));
+                
+                html += `<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-gray-500 text-sm">My Courses</p><p class="text-2xl font-bold">${myCourses.length}</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500"><p class="text-gray-500 text-sm">Pending Grades</p><p class="text-2xl font-bold">${pendingSubs.length}</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-center items-center">
+                        <button onclick="openCourseModal()" class="text-green-600 font-bold hover:text-green-800"><i class="fas fa-plus-circle mr-2"></i> Create New Course</button>
+                    </div>
+                </div>`;
+
+                html += `<h3 class="text-xl font-bold mb-4">My Courses</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+                if (myCourses.length === 0) {
+                    html += `<p class="text-gray-500 col-span-3">You haven't created any courses yet.</p>`;
+                } else {
+                    myCourses.forEach(c => {
+                        html += `<div class="bg-white p-5 rounded-lg shadow-md border border-gray-100 hover:shadow-lg transition cursor-pointer" onclick="selectCourse('${c.id}')">
+                            <h4 class="font-bold text-lg text-blue-800 mb-2">${c.name}</h4>
+                            <p class="text-gray-600 text-sm mb-4">${c.description || 'No description'}</p>
+                            <button onclick="event.stopPropagation(); openEnrollModal('${c.id}')" class="text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded hover:bg-gray-200"><i class="fas fa-user-plus mr-1"></i> Enroll Student</button>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+
+            } else {
+                // Student logic
+                const myEnrollments = enrollments.filter(e => e.studentId === user.id);
+                const myCourses = myEnrollments.map(en => courses.find(c => c.id === en.courseId)).filter(Boolean);
+                
+                let upcomingAssignments = [];
+                let gradedAssignments = [];
+
+                myCourses.forEach(c => {
+                    assignments.filter(a => a.courseId === c.id).forEach(a => {
+                        const sub = submissions.find(s => s.assignmentId === a.id && s.studentId === user.id);
+                        if (sub && sub.grade !== null) {
+                            gradedAssignments.push({ ...a, courseName: c.name, grade: sub.grade });
+                        } else {
+                            // If no submission OR submitted but not yet graded, it counts as upcoming/pending
+                            upcomingAssignments.push({ ...a, courseName: c.name, status: sub ? 'Submitted (Pending Grade)' : 'Not Submitted' });
+                        }
+                    });
+                });
+
+                html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-5 rounded-lg shadow border-l-4 border-blue-500">
+                        <h3 class="font-bold text-lg mb-3">Upcoming / Pending</h3>
+                        <ul class="space-y-2">
+                            ${upcomingAssignments.length === 0 ? '<li class="text-gray-500 text-sm">You\'re all caught up!</li>' : 
+                            upcomingAssignments.map(a => `<li class="text-sm flex justify-between bg-blue-50 p-2 rounded"><span class="font-medium text-blue-900">${a.title}</span><span class="text-blue-600 text-xs">${a.status}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow border-l-4 border-green-500">
+                        <h3 class="font-bold text-lg mb-3">Recently Graded</h3>
+                        <ul class="space-y-2">
+                            ${gradedAssignments.length === 0 ? '<li class="text-gray-500 text-sm">No grades yet.</li>' : 
+                            gradedAssignments.map(a => `<li class="text-sm flex justify-between bg-green-50 p-2 rounded"><span class="font-medium text-green-900">${a.title}</span><span class="text-green-700 font-bold">${a.grade}/${a.maxPoints}</span></li>`).join('')}
+                        </ul>
+                    </div>
+                </div>`;
+
+                html += `<h3 class="text-xl font-bold mb-4">My Courses</h3><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">`;
+                if (myCourses.length === 0) {
+                    html += `<p class="text-gray-500 col-span-3">You are not enrolled in any courses yet.</p>`;
+                } else {
+                    myCourses.forEach(c => {
+                        html += `<div class="bg-white p-5 rounded-lg shadow-md border border-gray-100 hover:shadow-lg transition cursor-pointer" onclick="selectCourse('${c.id}')">
+                            <h4 class="font-bold text-lg text-blue-800 mb-2">${c.name}</h4>
+                            <p class="text-gray-600 text-sm">${c.description || ''}</p>
+                        </div>`;
+                    });
+                }
+                html += `</div>`;
+            }
+            document.getElementById('dash-content').innerHTML = html;
+        }
+
+        // --- COURSE DETAIL & ASSIGNMENTS ---
+        function selectCourse(courseId) {
+            currentCourseId = courseId;
+            navigate('course');
+        }
+
+        function renderCourseDetail() {
+            const user = getCurrentUser();
+            const course = getData(DB.courses).find(c => c.id === currentCourseId);
+            if(!course) return navigate('dashboard');
+
+            const assignments = getData(DB.assignments).filter(a => a.courseId === currentCourseId);
+            
+            document.getElementById('course-title').textContent = course.name;
+            document.getElementById('course-desc').textContent = course.description;
+
+            const actionsHtml = user.role === 'instructor' ? 
+                `<button onclick="openAssignmentModal()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700"><i class="fas fa-plus mr-2"></i>Add Assignment</button>` : '';
+
+            document.getElementById('course-actions').innerHTML = actionsHtml;
+
+            let html = '';
+            if (assignments.length === 0) {
+                html = '<p class="text-gray-500">No assignments posted yet.</p>';
+            } else {
+                html = assignments.map(a => {
+                    const dueDate = formatDate(a.dueDate);
+                    return `
+                        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex justify-between items-center hover:bg-gray-50 cursor-pointer" onclick="selectAssignment('${a.id}')">
+                            <div>
+                                <h4 class="font-bold text-lg text-gray-800">${a.title}</h4>
+                                <p class="text-sm text-gray-500"><i class="fas fa-calendar mr-1"></i> Due: ${dueDate} | <i class="fas fa-star mr-1"></i> ${a.maxPoints} pts</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400"></i>
+                        </div>
+                    `;
+                }).join('');
+            }
+            document.getElementById('assignments-list').innerHTML = html;
+        }
+
+        // --- ASSIGNMENT DETAIL, SUBMISSIONS & GRADING ---
+        function selectAssignment(assignId) {
+            currentAssignmentId = assignId;
+            navigate('assignment');
+        }
+
+        function navigateBackToCourse() {
+            if (currentCourseId) navigate('course');
+            else navigate('dashboard');
+        }
+
+        function renderAssignmentDetail() {
+            const user = getCurrentUser();
+            const assignment = getData(DB.assignments).find(a => a.id === currentAssignmentId);
+            if(!assignment) return navigate('dashboard');
+            
+            const submissions = getData(DB.submissions);
+
+            document.getElementById('assign-title').textContent = assignment.title;
+            document.getElementById('assign-due').textContent = formatDate(assignment.dueDate);
+            document.getElementById('assign-points').textContent = assignment.maxPoints;
+            document.getElementById('assign-desc').textContent = assignment.description;
+
+            const studentZone = document.getElementById('assign-student-zone');
+            const instructorZone = document.getElementById('assign-instructor-zone');
+
+            if (user.role === 'student') {
+                studentZone.classList.remove('hidden');
+                instructorZone.classList.add('hidden');
+
+                const mySub = submissions.find(s => s.assignmentId === assignment.id && s.studentId === user.id);
+                const statusDiv = document.getElementById('submission-status');
+                const formDiv = document.getElementById('submission-form');
+
+                if (mySub) {
+                    formDiv.classList.add('hidden');
+                    let statusHtml = `<div class="p-4 rounded-lg ${mySub.grade !== null ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}">`;
+                    statusHtml += `<p class="font-bold ${mySub.grade !== null ? 'text-green-800' : 'text-yellow-800'} mb-2">
+                                    ${mySub.grade !== null ? 'Graded' : 'Submitted (Awaiting Grade)'} 
+                                    <span class="text-sm font-normal ml-2">(File: ${mySub.fileName})</span>
+                                  </p>`;
+                    if (mySub.comments) statusHtml += `<p class="text-sm text-gray-700 mb-2 bg-white p-2 rounded border"><strong>Your Comments:</strong> ${mySub.comments}</p>`;
+                    if (mySub.grade !== null) {
+                        statusHtml += `<div class="border-t border-green-300 pt-2 mt-2">
+                            <p class="font-bold text-green-900 text-lg">Grade: ${mySub.grade} / ${assignment.maxPoints}</p>
+                            <p class="text-sm text-gray-800 mt-1 bg-white p-2 rounded border"><strong>Instructor Feedback:</strong> ${mySub.feedback || 'No feedback provided.'}</p>
+                        </div>`;
+                    }
+                    statusHtml += `</div>`;
+                    statusDiv.innerHTML = statusHtml;
+                } else {
+                    formDiv.classList.remove('hidden');
+                    statusDiv.innerHTML = `<p class="text-red-600 text-sm font-medium">You have not submitted yet.</p>`;
+                }
+            } else {
+                studentZone.classList.add('hidden');
+                instructorZone.classList.remove('hidden');
+
+                const enrollments = getData(DB.enrollments).filter(e => e.courseId === assignment.courseId);
+                const users = getData(DB.users);
+                
+                let listHtml = '';
+                if(enrollments.length === 0) {
+                    listHtml = '<p class="text-gray-500">No students enrolled in this course.</p>';
+                } else {
+                    enrollments.forEach(en => {
+                        const student = users.find(u => u.id === en.studentId);
+                        if (!student) return;
+                        const sub = submissions.find(s => s.assignmentId === assignment.id && s.studentId === student.id);
+                        
+                        listHtml += `<div class="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center">
+                            <div>
+                                <p class="font-medium text-gray-800">${student.firstName}</p>
+                                <p class="text-xs text-gray-500">${sub ? `Submitted: ${sub.fileName}` : 'No submission'}</p>
+                            </div>
+                            <div>
+                                ${sub ? 
+                                    (sub.grade !== null ? 
+                                        `<span class="font-bold text-green-700">${sub.grade}/${assignment.maxPoints}</span>` : 
+                                        `<button onclick="openGradeModal('${sub.id}', '${student.firstName}', ${assignment.maxPoints})" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">Grade</button>`) :
+                                    `<span class="text-xs text-red-500 font-bold">Missing</span>`
+                                }
+                            </div>
+                        </div>`;
+                    });
+                }
+                document.getElementById('submissions-list').innerHTML = listHtml;
+            }
+        }
+
+        function submitAssignment() {
+            const user = getCurrentUser();
+            const fileInput = document.getElementById('sub-file');
+            const comments = document.getElementById('sub-comments').value;
+
+            if (!fileInput.files[0]) {
+                alert("Please select a file to submit.");
+                return;
+            }
+
+            const fileName = fileInput.files[0].name; // Mocking S3 upload
+
+            const newSub = {
+                id: 's' + Date.now(),
+                assignmentId: currentAssignmentId,
+                studentId: user.id,
+                fileName: fileName,
+                comments: comments,
+                grade: null,
+                feedback: null
+            };
+
+            let subs = getData(DB.submissions);
+            // Remove existing if resubmitting (before graded)
+            subs = subs.filter(s => !(s.assignmentId === currentAssignmentId && s.studentId === user.id));
+            subs.push(newSub);
+            setData(DB.submissions, subs);
+
+            renderAssignmentDetail(); // Re-render to show status
+        }
+
+        function openGradeModal(subId, studentName, maxPoints) {
+            document.getElementById('modal-title').textContent = `Grade Submission - ${studentName}`;
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="saveGrade(event, '${subId}')">
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1">Grade (out of ${maxPoints})</label>
+                        <input type="number" id="grade-val" min="0" max="${maxPoints}" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-bold mb-1">Feedback</label>
+                        <textarea id="grade-feedback" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Optional feedback for the student..."></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Submit Grade</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function saveGrade(e, subId) {
+            e.preventDefault();
+            const grade = document.getElementById('grade-val').value;
+            const feedback = document.getElementById('grade-feedback').value;
+
+            let subs = getData(DB.submissions);
+            subs = subs.map(s => {
+                if (s.id === subId) {
+                    return { ...s, grade: parseInt(grade), feedback: feedback };
+                }
+                return s;
+            });
+            setData(DB.submissions, subs);
+            closeModal();
+            renderAssignmentDetail();
+        }
+
+        // --- INSTRUCTOR MODALS (Create Course, Add Assignment, Enroll Student) ---
+        function openCourseModal() {
+            document.getElementById('modal-title').textContent = 'Create New Course';
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="saveCourse(event)">
+                    <div class="mb-4"><label class="block text-sm font-bold mb-1">Course Name</label><input type="text" id="c-name" required class="w-full px-3 py-2 border rounded"></div>
+                    <div class="mb-6"><label class="block text-sm font-bold mb-1">Description</label><textarea id="c-desc" rows="3" class="w-full px-3 py-2 border rounded"></textarea></div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function saveCourse(e) {
+            e.preventDefault();
+            const user = getCurrentUser();
+            const newCourse = {
+                id: 'c' + Date.now(),
+                instructorId: user.id,
+                name: document.getElementById('c-name').value,
+                description: document.getElementById('c-desc').value
+            };
+            let courses = getData(DB.courses);
+            courses.push(newCourse);
+            setData(DB.courses, courses);
+            closeModal();
+            renderDashboard();
+        }
+
+        function openEnrollModal(courseId) {
+            const users = getData(DB.users).filter(u => u.role === 'student');
+            const enrollments = getData(DB.enrollments).filter(e => e.courseId === courseId);
+            const enrolledIds = enrollments.map(e => e.studentId);
+            const availableUsers = users.filter(u => !enrolledIds.includes(u.id));
+
+            document.getElementById('modal-title').textContent = 'Enroll Student';
+            
+            let optionsHtml = availableUsers.length > 0 ? 
+                availableUsers.map(u => `<option value="${u.id}">${u.firstName} (${u.email})</option>`).join('') :
+                `<option value="">No available students</option>`;
+
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="enrollStudent(event, '${courseId}')">
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1">Select Student</label>
+                        <select id="enroll-student-id" required class="w-full px-3 py-2 border rounded" ${availableUsers.length === 0 ? 'disabled' : ''}>
+                            <option value="">-- Choose Student --</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 ${availableUsers.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}">Enroll</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function enrollStudent(e, courseId) {
+            e.preventDefault();
+            const studentId = document.getElementById('enroll-student-id').value;
+            let enrollments = getData(DB.enrollments);
+            enrollments.push({ id: 'e' + Date.now(), studentId, courseId });
+            setData(DB.enrollments, enrollments);
+            closeModal();
+            alert("Student enrolled successfully!");
+        }
+
+        function openAssignmentModal() {
+            document.getElementById('modal-title').textContent = 'Create New Assignment';
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="saveAssignment(event)">
+                    <div class="mb-4"><label class="block text-sm font-bold mb-1">Title</label><input type="text" id="a-title" required class="w-full px-3 py-2 border rounded"></div>
+                    <div class="mb-4"><label class="block text-sm font-bold mb-1">Description</label><textarea id="a-desc" rows="3" required class="w-full px-3 py-2 border rounded"></textarea></div>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div><label class="block text-sm font-bold mb-1">Due Date</label><input type="datetime-local" id="a-due" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Max Points</label><input type="number" id="a-points" value="100" required class="w-full px-3 py-2 border rounded"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function saveAssignment(e) {
+            e.preventDefault();
+            const newAssign = {
+                id: 'a' + Date.now(),
+                courseId: currentCourseId,
+                title: document.getElementById('a-title').value,
+                description: document.getElementById('a-desc').value,
+                dueDate: document.getElementById('a-due').value,
+                maxPoints: parseInt(document.getElementById('a-points').value)
+            };
+            let assignments = getData(DB.assignments);
+            assignments.push(newAssign);
+            setData(DB.assignments, assignments);
+            closeModal();
+            renderCourseDetail();
+        }
+
+        // --- MODAL HELPERS ---
+        function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            initDB();
+            const user = getCurrentUser();
+            if (user) navigate('dashboard');
+            else {
+                navigate('auth');
+                toggleAuthForm('login');
+            }
+        };
+    </script>
+</body>
+</html>

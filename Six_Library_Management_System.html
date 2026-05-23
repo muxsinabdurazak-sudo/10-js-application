@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibraCore - Library Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .view { display: none; opacity: 0; transition: opacity 0.3s ease-in; }
+        .view.active { display: block; opacity: 1; }
+        .modal-overlay { background-color: rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased text-gray-900">
+
+    <!-- Navigation Bar -->
+    <nav class="bg-indigo-800 shadow-lg fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="#" onclick="navigate('home')" class="flex-shrink-0 flex items-center">
+                        <i class="fas fa-book-open text-indigo-200 text-2xl mr-2"></i>
+                        <span class="font-bold text-xl text-white">LibraCore</span>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4" id="nav-links"></div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="pt-20 pb-10 min-h-screen">
+        
+        <!-- Auth View -->
+        <div id="view-auth" class="view max-w-md mx-auto mt-10">
+            <div class="bg-white p-8 border rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-6 text-center text-indigo-800">Login to Library</h2>
+                <div id="auth-error" class="hidden bg-red-100 text-red-700 p-3 rounded mb-4 text-sm"></div>
+                <form onsubmit="handleLogin(event)">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="login-email" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                        <input type="password" id="login-password" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Sign In</button>
+                </form>
+                <p class="text-center text-xs text-gray-500 mt-4">Demo Logins: <br> Librarian: admin@library.com / admin123 <br> Member: member@library.com / member123</p>
+            </div>
+        </div>
+
+        <!-- Librarian Dashboard View -->
+        <div id="view-dashboard" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Librarian Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" id="dash-stats">
+                <!-- Stats injected here -->
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4 text-red-600"><i class="fas fa-exclamation-circle mr-2"></i>Overdue Books</h3>
+                    <div id="dash-overdue" class="space-y-3 max-h-60 overflow-y-auto"><!-- Overdue list --></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4 text-blue-600"><i class="fas fa-clock mr-2"></i>Recent Active Loans</h3>
+                    <div id="dash-active" class="space-y-3 max-h-60 overflow-y-auto"><!-- Active list --></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Books Catalog View (Shared but role-adapted) -->
+        <div id="view-books" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+                <h2 class="text-3xl font-bold text-gray-800">Book Catalog</h2>
+                <div class="flex space-x-2 w-full md:w-auto">
+                    <input type="text" id="book-search" placeholder="Search title, author, ISBN..." class="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-grow md:w-80">
+                    <button onclick="renderBooks()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"><i class="fas fa-search"></i></button>
+                    <button id="btn-add-book" onclick="openBookModal()" class="hidden bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"><i class="fas fa-plus"></i> Add</button>
+                </div>
+            </div>
+            <div id="book-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"><!-- Books injected --></div>
+        </div>
+
+        <!-- Members View (Librarian Only) -->
+        <div id="view-members" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">Member Management</h2>
+                <button onclick="openMemberModal()" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700"><i class="fas fa-user-plus mr-2"></i>Add Member</button>
+            </div>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <th class="px-5 py-3">Name</th>
+                            <th class="px-5 py-3">Email</th>
+                            <th class="px-5 py-3">Status</th>
+                            <th class="px-5 py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-tbody" class="text-sm"><!-- Members injected --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Loans Management View (Librarian Only) -->
+        <div id="view-loans" class="view max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-6 space-y-4 md:space-y-0">
+                <h2 class="text-3xl font-bold text-gray-800">Loan Management</h2>
+                <div class="flex space-x-2">
+                    <button onclick="openBorrowModal()" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700"><i class="fas fa-hand-holding mr-2"></i>Borrow Book</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full leading-normal">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <th class="px-5 py-3">Book Title</th>
+                            <th class="px-5 py-3">Member</th>
+                            <th class="px-5 py-3">Due Date</th>
+                            <th class="px-5 py-3">Status</th>
+                            <th class="px-5 py-3">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="loan-tbody" class="text-sm"><!-- Loans injected --></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- My Loans View (Member Only) -->
+        <div id="view-my-loans" class="view max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">My Borrowed Books</h2>
+            <div id="my-loans-list" class="space-y-4"><!-- My loans injected --></div>
+        </div>
+
+    </main>
+
+    <!-- Generic Modal Structure -->
+    <div id="modal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center p-5 border-b">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800"></h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="modal-body" class="p-6">
+                <!-- Modal content injected -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA LAYER (Mock DB with LocalStorage) ---
+        const DB_USERS = 'lms_users';
+        const DB_BOOKS = 'lms_books';
+        const DB_LOANS = 'lms_loans';
+        const AUTH_TOKEN = 'lms_token';
+
+        const getUsers = () => JSON.parse(localStorage.getItem(DB_USERS)) || [];
+        const saveUsers = (u) => localStorage.setItem(DB_USERS, JSON.stringify(u));
+        const getBooks = () => JSON.parse(localStorage.getItem(DB_BOOKS)) || [];
+        const saveBooks = (b) => localStorage.setItem(DB_BOOKS, JSON.stringify(b));
+        const getLoans = () => JSON.parse(localStorage.getItem(DB_LOANS)) || [];
+        const saveLoans = (l) => localStorage.setItem(DB_LOANS, JSON.stringify(l));
+        
+        const getCurrentUser = () => {
+            const token = localStorage.getItem(AUTH_TOKEN);
+            return token ? JSON.parse(token) : null;
+        };
+        const setCurrentUser = (user) => {
+            if (user) localStorage.setItem(AUTH_TOKEN, JSON.stringify(user));
+            else localStorage.removeItem(AUTH_TOKEN);
+        };
+
+        // Seed Data
+        function initDB() {
+            if (getUsers().length === 0) {
+                const users = [
+                    { id: 'u1', email: 'admin@library.com', password: 'admin123', firstName: 'Alice', lastName: 'Librarian', role: 'Librarian', status: 'Active' },
+                    { id: 'u2', email: 'member@library.com', password: 'member123', firstName: 'Bob', lastName: 'Patron', role: 'Member', status: 'Active' }
+                ];
+                saveUsers(users);
+            }
+            if (getBooks().length === 0) {
+                const books = [
+                    { id: 'b1', isbn: '978-0061120084', title: 'To Kill a Mockingbird', author: 'Harper Lee', genre: 'Fiction', totalCopies: 3, availableCopies: 2 },
+                    { id: 'b2', isbn: '978-0451524935', title: '1984', author: 'George Orwell', genre: 'Dystopia', totalCopies: 2, availableCopies: 1 },
+                    { id: 'b3', isbn: '978-0134685991', title: 'Clean Code', author: 'Robert C. Martin', genre: 'Technology', totalCopies: 1, availableCopies: 0 }
+                ];
+                saveBooks(books);
+            }
+            if (getLoans().length === 0) {
+                const loans = [
+                    { id: 'l1', bookId: 'b1', memberId: 'u2', loanDate: '2023-10-01', dueDate: '2023-10-15', returnDate: null, status: 'Active' },
+                    { id: 'l2', bookId: 'b3', memberId: 'u2', loanDate: '2023-09-01', dueDate: '2023-09-15', returnDate: null, status: 'Overdue' }
+                ];
+                saveLoans(loans);
+            }
+        }
+
+        // --- UI/ROUTING ---
+        function navigate(view) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const el = document.getElementById(`view-${view}`);
+            if (el) { el.classList.add('active'); }
+            updateNavbar();
+            if (view === 'dashboard') renderDashboard();
+            if (view === 'books') renderBooks();
+            if (view === 'members') renderMembers();
+            if (view === 'loans') renderLoans();
+            if (view === 'my-loans') renderMyLoans();
+        }
+
+        function updateNavbar() {
+            const user = getCurrentUser();
+            const nav = document.getElementById('nav-links');
+            if (!user) {
+                nav.innerHTML = `<span class="text-indigo-200 text-sm">Welcome, Guest</span>`;
+                navigate('auth');
+                return;
+            }
+
+            let html = '';
+            if (user.role === 'Librarian') {
+                html += `
+                    <a href="#" onclick="navigate('dashboard')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-tachometer-alt mr-1"></i> Dashboard</a>
+                    <a href="#" onclick="navigate('books')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-book mr-1"></i> Books</a>
+                    <a href="#" onclick="navigate('members')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-users mr-1"></i> Members</a>
+                    <a href="#" onclick="navigate('loans')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-exchange-alt mr-1"></i> Loans</a>
+                `;
+            } else {
+                html += `
+                    <a href="#" onclick="navigate('books')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-book mr-1"></i> Catalog</a>
+                    <a href="#" onclick="navigate('my-loans')" class="text-indigo-200 hover:text-white px-3 py-2 text-sm font-medium"><i class="fas fa-bookmark mr-1"></i> My Loans</a>
+                `;
+            }
+            html += `
+                <span class="text-white font-medium px-3 py-2 text-sm"><i class="fas fa-user mr-1"></i> ${user.firstName}</span>
+                <button onclick="logout()" class="bg-indigo-900 text-indigo-200 px-4 py-2 rounded-lg text-sm hover:bg-indigo-950">Logout</button>
+            `;
+            nav.innerHTML = html;
+        }
+
+        // --- AUTH ---
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            const user = getUsers().find(u => u.email === email && u.password === pass);
+            
+            if (user) {
+                setCurrentUser(user);
+                navigate(user.role === 'Librarian' ? 'dashboard' : 'books');
+            } else {
+                document.getElementById('auth-error').classList.remove('hidden');
+                document.getElementById('auth-error').textContent = 'Invalid email or password.';
+            }
+        }
+
+        function logout() {
+            setCurrentUser(null);
+            navigate('auth');
+        }
+
+        // --- LIBRARIAN: DASHBOARD ---
+        function renderDashboard() {
+            const books = getBooks();
+            const users = getUsers().filter(u => u.role === 'Member');
+            const loans = getLoans();
+            const active = loans.filter(l => l.status === 'Active').length;
+            const overdue = loans.filter(l => l.status === 'Overdue').length;
+
+            document.getElementById('dash-stats').innerHTML = `
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-indigo-500"><p class="text-gray-500 text-sm">Total Books</p><p class="text-2xl font-bold">${books.reduce((a,b) => a + b.totalCopies, 0)}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500"><p class="text-gray-500 text-sm">Total Members</p><p class="text-2xl font-bold">${users.length}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500"><p class="text-gray-500 text-sm">Active Loans</p><p class="text-2xl font-bold">${active}</p></div>
+                <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-500"><p class="text-gray-500 text-sm">Overdue</p><p class="text-2xl font-bold">${overdue}</p></div>
+            `;
+
+            const overdueLoans = loans.filter(l => l.status === 'Overdue');
+            document.getElementById('dash-overdue').innerHTML = overdueLoans.length === 0 ? '<p class="text-gray-500">No overdue books!</p>' :
+                overdueLoans.map(l => {
+                    const book = getBooks().find(b => b.id === l.bookId);
+                    const member = getUsers().find(u => u.id === l.memberId);
+                    return `<div class="flex justify-between items-center bg-red-50 p-2 rounded"><span class="font-medium text-red-800">${book.title}</span><span class="text-xs text-red-600">${member.firstName} ${member.lastName}</span></div>`;
+                }).join('');
+
+            const activeLoans = loans.filter(l => l.status === 'Active').slice(0, 5);
+            document.getElementById('dash-active').innerHTML = activeLoans.length === 0 ? '<p class="text-gray-500">No active loans.</p>' :
+                activeLoans.map(l => {
+                    const book = getBooks().find(b => b.id === l.bookId);
+                    const member = getUsers().find(u => u.id === l.memberId);
+                    return `<div class="flex justify-between items-center bg-blue-50 p-2 rounded"><span class="font-medium text-blue-800">${book.title}</span><span class="text-xs text-blue-600">Due: ${l.dueDate}</span></div>`;
+                }).join('');
+        }
+
+        // --- BOOKS ---
+        function renderBooks() {
+            const user = getCurrentUser();
+            const searchTerm = document.getElementById('book-search')?.value.toLowerCase() || '';
+            const books = getBooks().filter(b => b.title.toLowerCase().includes(searchTerm) || b.author.toLowerCase().includes(searchTerm) || b.isbn.includes(searchTerm));
+            
+            document.getElementById('btn-add-book').classList.toggle('hidden', user.role !== 'Librarian');
+
+            document.getElementById('book-list').innerHTML = books.map(b => `
+                <div class="bg-white rounded-lg shadow-md border border-gray-100 p-5 flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-lg text-gray-800 mb-1">${b.title}</h3>
+                        <p class="text-sm text-gray-600 mb-2">by ${b.author}</p>
+                        <p class="text-xs text-gray-500 mb-4"><i class="fas fa-barcode mr-1"></i> ${b.isbn} | <i class="fas fa-tag mr-1"></i> ${b.genre}</p>
+                    </div>
+                    <div class="flex justify-between items-center border-t pt-3 mt-2">
+                        <span class="text-sm font-semibold ${b.availableCopies > 0 ? 'text-green-600' : 'text-red-600'}">
+                            ${b.availableCopies > 0 ? `${b.availableCopies} Available` : 'Checked Out'}
+                        </span>
+                        ${user.role === 'Librarian' ? `
+                            <div class="space-x-2">
+                                <button onclick="openBookModal('${b.id}')" class="text-blue-600 hover:text-blue-800 text-sm"><i class="fas fa-edit"></i> Edit</button>
+                                <button onclick="deleteBook('${b.id}')" class="text-red-600 hover:text-red-800 text-sm"><i class="fas fa-trash"></i> Del</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openBookModal(bookId = null) {
+            const book = bookId ? getBooks().find(b => b.id === bookId) : null;
+            document.getElementById('modal-title').textContent = book ? 'Edit Book' : 'Add New Book';
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="saveBook(event, '${bookId || ''}')">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="col-span-2"><label class="block text-sm font-bold mb-1">Title</label><input type="text" id="b-title" value="${book?.title || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Author</label><input type="text" id="b-author" value="${book?.author || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">ISBN</label><input type="text" id="b-isbn" value="${book?.isbn || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Genre</label><input type="text" id="b-genre" value="${book?.genre || ''}" class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Total Copies</label><input type="number" id="b-total" min="1" value="${book?.totalCopies || 1}" required class="w-full px-3 py-2 border rounded"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Save</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function saveBook(e, bookId) {
+            e.preventDefault();
+            let books = getBooks();
+            const data = {
+                title: document.getElementById('b-title').value,
+                author: document.getElementById('b-author').value,
+                isbn: document.getElementById('b-isbn').value,
+                genre: document.getElementById('b-genre').value,
+                totalCopies: parseInt(document.getElementById('b-total').value)
+            };
+
+            if (bookId) {
+                books = books.map(b => {
+                    if (b.id === bookId) {
+                        const diff = data.totalCopies - b.totalCopies;
+                        return { ...b, ...data, availableCopies: b.availableCopies + diff };
+                    }
+                    return b;
+                });
+            } else {
+                books.push({ id: 'b' + Date.now(), ...data, availableCopies: data.totalCopies });
+            }
+            saveBooks(books);
+            closeModal();
+            renderBooks();
+        }
+
+        function deleteBook(id) {
+            if(!confirm("Are you sure? Deleting a book cannot be undone.")) return;
+            // Check active loans?
+            saveBooks(getBooks().filter(b => b.id !== id));
+            renderBooks();
+        }
+
+        // --- MEMBERS ---
+        function renderMembers() {
+            const members = getUsers().filter(u => u.role === 'Member');
+            document.getElementById('member-tbody').innerHTML = members.map(m => `
+                <tr class="border-b border-gray-200 hover:bg-gray-50">
+                    <td class="px-5 py-4"><p class="text-gray-900 whitespace-no-wrap font-medium">${m.firstName} ${m.lastName}</p></td>
+                    <td class="px-5 py-4 text-gray-600">${m.email}</td>
+                    <td class="px-5 py-4"><span class="relative inline-block px-3 py-1 font-semibold leading-tight ${m.status === 'Active' ? 'text-green-900 bg-green-200' : 'text-red-900 bg-red-200'} rounded-full text-xs">${m.status}</span></td>
+                    <td class="px-5 py-4">
+                        <button onclick="openMemberModal('${m.id}')" class="text-blue-600 hover:text-blue-800 mr-2"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function openMemberModal(memberId = null) {
+            const member = memberId ? getUsers().find(u => u.id === memberId) : null;
+            document.getElementById('modal-title').textContent = member ? 'Edit Member' : 'Add New Member';
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="saveMember(event, '${memberId || ''}')">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="block text-sm font-bold mb-1">First Name</label><input type="text" id="m-fname" value="${member?.firstName || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Last Name</label><input type="text" id="m-lname" value="${member?.lastName || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div class="col-span-2"><label class="block text-sm font-bold mb-1">Email</label><input type="email" id="m-email" value="${member?.email || ''}" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Password ${member ? '(leave blank to keep)' : ''}</label><input type="password" id="m-pass" ${member ? '' : 'required'} class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Status</label>
+                            <select id="m-status" class="w-full px-3 py-2 border rounded">
+                                <option value="Active" ${member?.status === 'Active' ? 'selected' : ''}>Active</option>
+                                <option value="Inactive" ${member?.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Save</button>
+                    </div>
+                </form>
+            `;
+            openModal();
+        }
+
+        function saveMember(e, memberId) {
+            e.preventDefault();
+            let users = getUsers();
+            const data = {
+                firstName: document.getElementById('m-fname').value,
+                lastName: document.getElementById('m-lname').value,
+                email: document.getElementById('m-email').value,
+                status: document.getElementById('m-status').value
+            };
+            const pass = document.getElementById('m-pass').value;
+
+            if (memberId) {
+                users = users.map(u => {
+                    if (u.id === memberId) return { ...u, ...data, ...(pass ? { password: pass } : {}) };
+                    return u;
+                });
+            } else {
+                if (!pass) { alert("Password required"); return; }
+                users.push({ id: 'u' + Date.now(), ...data, password: pass, role: 'Member' });
+            }
+            saveUsers(users);
+            closeModal();
+            renderMembers();
+        }
+
+        // --- LOANS ---
+        function renderLoans() {
+            const loans = getLoans();
+            const books = getBooks();
+            const users = getUsers();
+            
+            document.getElementById('loan-tbody').innerHTML = loans.map(l => {
+                const book = books.find(b => b.id === l.bookId);
+                const member = users.find(u => u.id === l.memberId);
+                const statusClass = l.status === 'Active' ? 'bg-blue-200 text-blue-900' : l.status === 'Overdue' ? 'bg-red-200 text-red-900' : 'bg-gray-200 text-gray-900';
+                
+                return `
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="px-5 py-4 font-medium">${book?.title || 'Deleted'}</td>
+                        <td class="px-5 py-4 text-gray-600">${member?.firstName || 'Deleted'} ${member?.lastName || ''}</td>
+                        <td class="px-5 py-4 text-gray-600">${l.dueDate}</td>
+                        <td class="px-5 py-4"><span class="relative inline-block px-3 py-1 font-semibold leading-tight ${statusClass} rounded-full text-xs">${l.status}</span></td>
+                        <td class="px-5 py-4">
+                            ${l.status !== 'Returned' ? `<button onclick="returnBook('${l.id}')" class="bg-green-500 text-white px-3 py-1 rounded text-xs hover:bg-green-600">Return</button>` : '<span class="text-xs text-gray-400">Returned</span>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function openBorrowModal() {
+            const members = getUsers().filter(u => u.role === 'Member' && u.status === 'Active');
+            const books = getBooks().filter(b => b.availableCopies > 0);
+
+            document.getElementById('modal-title').textContent = 'Process New Loan';
+            document.getElementById('modal-body').innerHTML = `
+                <form onsubmit="processLoan(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1">Select Member</label>
+                        <select id="l-member" required class="w-full px-3 py-2 border rounded">
+                            <option value="">-- Choose Member --</option>
+                            ${members.map(m => `<option value="${m.id}">${m.firstName} ${m.lastName} (${m.email})</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-bold mb-1">Select Available Book</label>
+                        <select id="l-book" required class="w-full px-3 py-2 border rounded">
+                            <option value="">-- Choose Book --</option>
+                            ${books.map(b => `<option value="${b.id}">${b.title} by ${b.author}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="block text-sm font-bold mb-1">Loan Date</label><input type="date" id="l-loandate" required class="w-full px-3 py-2 border rounded"></div>
+                        <div><label class="block text-sm font-bold mb-1">Due Date</label><input type="date" id="l-duedate" required class="w-full px-3 py-2 border rounded"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Borrow</button>
+                    </div>
+                </form>
+            `;
+            // Auto-set dates
+            const today = new Date().toISOString().split('T')[0];
+            const due = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('l-loandate').value = today;
+            document.getElementById('l-duedate').value = due;
+            openModal();
+        }
+
+        function processLoan(e) {
+            e.preventDefault();
+            const memberId = document.getElementById('l-member').value;
+            const bookId = document.getElementById('l-book').value;
+            const loanDate = document.getElementById('l-loandate').value;
+            const dueDate = document.getElementById('l-duedate').value;
+
+            let books = getBooks();
+            const bookIdx = books.findIndex(b => b.id === bookId);
+            
+            if (bookIdx === -1 || books[bookIdx].availableCopies <= 0) {
+                alert("Book not available!"); return;
+            }
+
+            books[bookIdx].availableCopies--;
+            saveBooks(books);
+
+            const loans = getLoans();
+            loans.push({ id: 'l' + Date.now(), bookId, memberId, loanDate, dueDate, returnDate: null, status: 'Active' });
+            saveLoans(loans);
+
+            closeModal();
+            renderLoans();
+        }
+
+        function returnBook(loanId) {
+            let loans = getLoans();
+            let books = getBooks();
+            
+            const loanIdx = loans.findIndex(l => l.id === loanId);
+            if (loanIdx === -1) return;
+
+            const loan = loans[loanIdx];
+            loan.status = 'Returned';
+            loan.returnDate = new Date().toISOString().split('T')[0];
+
+            const bookIdx = books.findIndex(b => b.id === loan.bookId);
+            if (bookIdx !== -1) books[bookIdx].availableCopies++;
+
+            saveLoans(loans);
+            saveBooks(books);
+            renderLoans();
+        }
+
+        // --- MEMBER: MY LOANS ---
+        function renderMyLoans() {
+            const user = getCurrentUser();
+            if (!user) return;
+            
+            // Check for overdue books to update status dynamically
+            let loans = getLoans();
+            const today = new Date().toISOString().split('T')[0];
+            let changed = false;
+            loans.forEach(l => {
+                if (l.memberId === user.id && l.status === 'Active' && l.dueDate < today) {
+                    l.status = 'Overdue';
+                    changed = true;
+                }
+            });
+            if (changed) saveLoans(loans);
+
+            const myLoans = loans.filter(l => l.memberId === user.id);
+            const books = getBooks();
+
+            document.getElementById('my-loans-list').innerHTML = myLoans.map(l => {
+                const book = books.find(b => b.id === l.bookId);
+                const statusClass = l.status === 'Active' ? 'bg-blue-100 border-blue-300 text-blue-800' : l.status === 'Overdue' ? 'bg-red-100 border-red-300 text-red-800' : 'bg-gray-100 border-gray-300 text-gray-800';
+                
+                return `
+                    <div class="p-4 border-l-4 rounded shadow-sm ${statusClass}">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-lg">${book?.title || 'Unknown Book'}</h4>
+                                <p class="text-sm">by ${book?.author || 'Unknown'}</p>
+                            </div>
+                            <span class="font-bold text-sm uppercase">${l.status}</span>
+                        </div>
+                        <div class="mt-3 text-sm flex space-x-6">
+                            <span><i class="fas fa-calendar-check mr-1"></i> Borrowed: ${l.loanDate}</span>
+                            <span><i class="fas fa-calendar-times mr-1"></i> Due: ${l.dueDate}</span>
+                            ${l.returnDate ? `<span><i class="fas fa-calendar-alt mr-1"></i> Returned: ${l.returnDate}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('') || '<p class="text-gray-500">You have no borrowing history.</p>';
+        }
+
+        // --- MODAL HELPERS ---
+        function openModal() { document.getElementById('modal').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); }
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            initDB();
+            const user = getCurrentUser();
+            if (user) {
+                navigate(user.role === 'Librarian' ? 'dashboard' : 'my-loans');
+            } else {
+                navigate('auth');
+            }
+        };
+    </script>
+</body>
+</html>

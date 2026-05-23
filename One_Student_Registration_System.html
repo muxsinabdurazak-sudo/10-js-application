@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Registration System</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar and transitions */
+        .sidebar-link { transition: all 0.2s ease; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div id="app" x-data="app()" x-cloak class="flex h-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <div x-show="state.isLoggedIn" class="w-64 bg-gray-900 text-white flex flex-col hidden md:flex">
+            <div class="p-4 border-b border-gray-700">
+                <h1 class="text-xl font-bold"><i class="fas fa-graduation-cap mr-2"></i>SRS Admin</h1>
+            </div>
+            <nav class="flex-1 p-4 space-y-2">
+                <a @click="navigate('dashboard')" class="sidebar-link flex items-center px-4 py-2 rounded cursor-pointer" :class="state.currentView === 'dashboard' ? 'bg-blue-600' : 'hover:bg-gray-700'">
+                    <i class="fas fa-tachometer-alt mr-3"></i> Dashboard
+                </a>
+                <a @click="navigate('students')" class="sidebar-link flex items-center px-4 py-2 rounded cursor-pointer" :class="state.currentView === 'students' ? 'bg-blue-600' : 'hover:bg-gray-700'">
+                    <i class="fas fa-users mr-3"></i> Students
+                </a>
+                <a @click="navigate('courses')" class="sidebar-link flex items-center px-4 py-2 rounded cursor-pointer" :class="state.currentView === 'courses' ? 'bg-blue-600' : 'hover:bg-gray-700'">
+                    <i class="fas fa-book mr-3"></i> Courses
+                </a>
+                <a @click="navigate('enrollments')" class="sidebar-link flex items-center px-4 py-2 rounded cursor-pointer" :class="state.currentView === 'enrollments' ? 'bg-blue-600' : 'hover:bg-gray-700'">
+                    <i class="fas fa-clipboard-list mr-3"></i> Enrollments
+                </a>
+            </nav>
+            <div class="p-4 border-t border-gray-700">
+                <button @click="logout" class="w-full text-left px-4 py-2 hover:bg-gray-700 rounded"><i class="fas fa-sign-out-alt mr-3"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-y-auto">
+            <!-- Top Bar -->
+            <header x-show="state.isLoggedIn" class="bg-white shadow p-4 flex justify-between items-center md:hidden">
+                <button @click="state.showMobileMenu = !state.showMobileMenu" class="text-gray-600"><i class="fas fa-bars text-xl"></i></button>
+                <h1 class="font-bold text-blue-600">SRS Admin</h1>
+                <button @click="logout" class="text-red-500"><i class="fas fa-sign-out-alt"></i></button>
+            </header>
+
+            <main class="p-6">
+                <!-- Login View -->
+                <div x-show="!state.isLoggedIn" class="flex items-center justify-center h-full fade-in">
+                    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+                        <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">Admin Login</h2>
+                        <div x-show="state.loginError" class="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm" x-text="state.loginError"></div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 mb-2">Username</label>
+                            <input x-model="state.loginForm.username" type="text" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 mb-2">Password</label>
+                            <input x-model="state.loginForm.password" type="password" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button @click="login" class="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition">Login</button>
+                        <p class="text-xs text-gray-500 mt-4 text-center">Demo: admin / password123</p>
+                    </div>
+                </div>
+
+                <!-- Dashboard -->
+                <div x-show="state.isLoggedIn && state.currentView === 'dashboard'" class="fade-in">
+                    <h2 class="text-2xl font-bold mb-6 text-gray-800">Dashboard</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center space-x-4">
+                            <div class="bg-blue-100 p-4 rounded-full text-blue-600"><i class="fas fa-users text-2xl"></i></div>
+                            <div><p class="text-gray-500">Total Students</p><p class="text-2xl font-bold" x-text="db.students.length"></p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center space-x-4">
+                            <div class="bg-green-100 p-4 rounded-full text-green-600"><i class="fas fa-book text-2xl"></i></div>
+                            <div><p class="text-gray-500">Active Courses</p><p class="text-2xl font-bold" x-text="db.courses.length"></p></div>
+                        </div>
+                        <div class="bg-white p-6 rounded-lg shadow flex items-center space-x-4">
+                            <div class="bg-purple-100 p-4 rounded-full text-purple-600"><i class="fas fa-clipboard-list text-2xl"></i></div>
+                            <div><p class="text-gray-500">Enrollments</p><p class="text-2xl font-bold" x-text="db.enrollments.length"></p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Students View -->
+                <div x-show="state.isLoggedIn && state.currentView === 'students'" class="fade-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Student Management</h2>
+                        <button @click="openStudentModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"><i class="fas fa-plus mr-2"></i>Add Student</button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 mb-4">
+                        <input x-model="state.studentSearch" type="text" placeholder="Search by Name, ID, or Email..." class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600 text-sm">
+                                    <th class="p-3">Student ID</th>
+                                    <th class="p-3">Full Name</th>
+                                    <th class="p-3">Email</th>
+                                    <th class="p-3">Enroll Date</th>
+                                    <th class="p-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr x-for="student in filteredStudents" :key="student.id" class="border-b hover:bg-gray-50">
+                                    <td class="p-3 font-mono text-sm" x-text="student.student_id"></td>
+                                    <td class="p-3" x-text="student.first_name + ' ' + student.last_name"></td>
+                                    <td class="p-3 text-blue-600" x-text="student.email"></td>
+                                    <td class="p-3" x-text="student.enrollment_date"></td>
+                                    <td class="p-3">
+                                        <button @click="deleteStudent(student.id)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                                <tr x-show="filteredStudents.length === 0"><td colspan="5" class="p-4 text-center text-gray-500">No students found.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Courses View -->
+                <div x-show="state.isLoggedIn && state.currentView === 'courses'" class="fade-in">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Course Management</h2>
+                        <button @click="openCourseModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"><i class="fas fa-plus mr-2"></i>Add Course</button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-4 mb-4">
+                        <input x-model="state.courseSearch" type="text" placeholder="Search by Code or Name..." class="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div x-for="course in filteredCourses" :key="course.id" class="bg-white p-4 rounded-lg shadow border-t-4 border-blue-500">
+                            <div class="flex justify-between items-start mb-2">
+                                <div><h3 class="font-bold text-gray-800" x-text="course.course_name"></h3><p class="text-sm text-gray-500" x-text="course.course_code"></p></div>
+                                <button @click="deleteCourse(course.id)" class="text-red-400 hover:text-red-600 text-sm"><i class="fas fa-times"></i></button>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-4" x-text="course.description"></p>
+                            <div class="flex justify-between text-sm">
+                                <span><i class="fas fa-weight-hanging mr-1"></i> Credits: <span x-text="course.credits"></span></span>
+                                <span x-bind:class="getCourseCapacityColor(course)">
+                                    <i class="fas fa-users mr-1"></i> <span x-text="getCourseEnrollmentCount(course.id) + ' / ' + course.capacity"></span>
+                                </span>
+                            </div>
+                        </div>
+                        <div x-show="filteredCourses.length === 0" class="col-span-3 text-center text-gray-500 py-8">No courses found.</div>
+                    </div>
+                </div>
+
+                <!-- Enrollments View -->
+                <div x-show="state.isLoggedIn && state.currentView === 'enrollments'" class="fade-in">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Enrollment Management</h2>
+                        <button @click="openEnrollmentModal()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"><i class="fas fa-plus mr-2"></i>New Enrollment</button>
+                    </div>
+                    <div class="bg-white rounded-lg shadow overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100 text-gray-600 text-sm">
+                                    <th class="p-3">Student</th>
+                                    <th class="p-3">Course</th>
+                                    <th class="p-3">Date</th>
+                                    <th class="p-3">Status</th>
+                                    <th class="p-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr x-for="enr in db.enrollments" :key="enr.id" class="border-b hover:bg-gray-50">
+                                    <td class="p-3" x-text="getStudentName(enr.student_id)"></td>
+                                    <td class="p-3" x-text="getCourseName(enr.course_id)"></td>
+                                    <td class="p-3" x-text="enr.enrollment_date"></td>
+                                    <td class="p-3"><span class="px-2 py-1 text-xs rounded-full" x-bind:class="enr.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'" x-text="enr.status"></span></td>
+                                    <td class="p-3">
+                                        <button x-show="enr.status === 'Active'" @click="dropEnrollment(enr.id)" class="text-red-500 hover:text-red-700 text-sm">Drop</button>
+                                    </td>
+                                </tr>
+                                <tr x-show="db.enrollments.length === 0"><td colspan="5" class="p-4 text-center text-gray-500">No enrollments yet.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Modals -->
+        <!-- Student Modal -->
+        <div x-show="state.showStudentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 fade-in">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">Add New Student</h3>
+                <div class="space-y-3">
+                    <input x-model="state.studentForm.first_name" type="text" placeholder="First Name *" class="w-full px-3 py-2 border rounded">
+                    <input x-model="state.studentForm.last_name" type="text" placeholder="Last Name *" class="w-full px-3 py-2 border rounded">
+                    <input x-model="state.studentForm.email" type="email" placeholder="Email *" class="w-full px-3 py-2 border rounded">
+                    <input x-model="state.studentForm.date_of_birth" type="date" class="w-full px-3 py-2 border rounded">
+                    <select x-model="state.studentForm.gender" class="w-full px-3 py-2 border rounded">
+                        <option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button @click="state.showStudentModal = false" class="px-4 py-2 text-gray-600 border rounded hover:bg-gray-50">Cancel</button>
+                    <button @click="saveStudent" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Modal -->
+        <div x-show="state.showCourseModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 fade-in">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">Add New Course</h3>
+                <div class="space-y-3">
+                    <input x-model="state.courseForm.course_code" type="text" placeholder="Course Code (e.g., CS101) *" class="w-full px-3 py-2 border rounded">
+                    <input x-model="state.courseForm.course_name" type="text" placeholder="Course Name *" class="w-full px-3 py-2 border rounded">
+                    <textarea x-model="state.courseForm.description" placeholder="Description" class="w-full px-3 py-2 border rounded"></textarea>
+                    <input x-model="state.courseForm.credits" type="number" placeholder="Credits *" class="w-full px-3 py-2 border rounded">
+                    <input x-model="state.courseForm.capacity" type="number" placeholder="Capacity (Max Students) *" class="w-full px-3 py-2 border rounded">
+                </div>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button @click="state.showCourseModal = false" class="px-4 py-2 text-gray-600 border rounded hover:bg-gray-50">Cancel</button>
+                    <button @click="saveCourse" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enrollment Modal -->
+        <div x-show="state.showEnrollmentModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 fade-in">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+                <h3 class="text-lg font-bold mb-4">Enroll Student in Course</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Student</label>
+                        <select x-model="state.enrollmentForm.student_id" class="w-full px-3 py-2 border rounded">
+                            <option value="">-- Choose Student --</option>
+                            <option x-for="s in db.students" :key="s.id" x-bind:value="s.id" x-text="s.first_name + ' ' + s.last_name + ' (' + s.student_id + ')'" ></option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Course</label>
+                        <select x-model="state.enrollmentForm.course_id" class="w-full px-3 py-2 border rounded">
+                            <option value="">-- Choose Course --</option>
+                            <option x-for="c in db.courses" :key="c.id" x-bind:value="c.id" x-text="c.course_name + ' (' + getCourseEnrollmentCount(c.id) + '/' + c.capacity + ')'" ></option>
+                        </select>
+                    </div>
+                    <div x-show="state.enrollmentError" class="text-red-500 text-sm" x-text="state.enrollmentError"></div>
+                </div>
+                <div class="flex justify-end space-x-2 mt-6">
+                    <button @click="state.showEnrollmentModal = false" class="px-4 py-2 text-gray-600 border rounded hover:bg-gray-50">Cancel</button>
+                    <button @click="enrollStudent" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Confirm Enrollment</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Alpine.js for Reactivity (Acts like Vue.js in this SPA context) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <script>
+        // Helper to generate UUIDs
+        const uuid = () => Math.random().toString(36).substr(2, 9);
+
+        // Initial Mock Data
+        const initialStudents = [
+            { id: '1', student_id: 'STU-001', first_name: 'Ahmed', last_name: 'Ali', email: 'ahmed@example.com', date_of_birth: '2000-05-12', gender: 'Male', enrollment_date: '2023-09-01' },
+            { id: '2', student_id: 'STU-002', first_name: 'Sara', last_name: 'Khan', email: 'sara@example.com', date_of_birth: '2001-02-20', gender: 'Female', enrollment_date: '2023-09-01' }
+        ];
+
+        const initialCourses = [
+            { id: '101', course_code: 'CS101', course_name: 'Intro to Computer Science', description: 'Basic programming concepts.', credits: 3, capacity: 30 },
+            { id: '102', course_code: 'MATH201', course_name: 'Calculus II', description: 'Advanced calculus.', credits: 4, capacity: 25 }
+        ];
+
+        const initialEnrollments = [
+            { id: '1001', student_id: '1', course_id: '101', enrollment_date: '2023-09-02', status: 'Active' }
+        ];
+
+        function app() {
+            return {
+                // State Management
+                state: {
+                    isLoggedIn: false,
+                    currentView: 'dashboard',
+                    loginForm: { username: '', password: '' },
+                    loginError: '',
+                    studentSearch: '',
+                    courseSearch: '',
+                    showStudentModal: false,
+                    showCourseModal: false,
+                    showEnrollmentModal: false,
+                    studentForm: { first_name: '', last_name: '', email: '', date_of_birth: '', gender: 'Male' },
+                    courseForm: { course_code: '', course_name: '', description: '', credits: '', capacity: '' },
+                    enrollmentForm: { student_id: '', course_id: '' },
+                    enrollmentError: ''
+                },
+                
+                // Database Simulation (Load from localStorage or use defaults)
+                db: {
+                    admins: [{ username: 'admin', password: 'password123' }], // Plain text for demo only!
+                    students: JSON.parse(localStorage.getItem('srs_students')) || initialStudents,
+                    courses: JSON.parse(localStorage.getItem('srs_courses')) || initialCourses,
+                    enrollments: JSON.parse(localStorage.getItem('srs_enrollments')) || initialEnrollments
+                },
+
+                // Methods
+                saveDb() {
+                    localStorage.setItem('srs_students', JSON.stringify(this.db.students));
+                    localStorage.setItem('srs_courses', JSON.stringify(this.db.courses));
+                    localStorage.setItem('srs_enrollments', JSON.stringify(this.db.enrollments));
+                },
+
+                login() {
+                    const admin = this.db.admins.find(a => 
+                        a.username === this.state.loginForm.username && a.password === this.state.loginForm.password
+                    );
+                    if (admin) {
+                        this.state.isLoggedIn = true;
+                        this.state.loginError = '';
+                    } else {
+                        this.state.loginError = 'Invalid credentials. Use admin/password123';
+                    }
+                },
+
+                logout() {
+                    this.state.isLoggedIn = false;
+                    this.state.currentView = 'dashboard';
+                },
+
+                navigate(view) {
+                    this.state.currentView = view;
+                },
+
+                // Students Logic
+                openStudentModal() {
+                    this.state.studentForm = { first_name: '', last_name: '', email: '', date_of_birth: '', gender: 'Male' };
+                    this.state.showStudentModal = true;
+                },
+                saveStudent() {
+                    if(!this.state.studentForm.first_name || !this.state.studentForm.email) return alert('Name and Email are required');
+                    const newStudent = {
+                        id: uuid(),
+                        student_id: `STU-${String(this.db.students.length + 1).padStart(3, '0')}`,
+                        ...this.state.studentForm,
+                        enrollment_date: new Date().toISOString().split('T')[0]
+                    };
+                    this.db.students.push(newStudent);
+                    this.saveDb();
+                    this.state.showStudentModal = false;
+                },
+                deleteStudent(id) {
+                    if(confirm('Are you sure? This will also remove their enrollments.')) {
+                        this.db.students = this.db.students.filter(s => s.id !== id);
+                        this.db.enrollments = this.db.enrollments.filter(e => e.student_id !== id);
+                        this.saveDb();
+                    }
+                },
+
+                // Courses Logic
+                openCourseModal() {
+                    this.state.courseForm = { course_code: '', course_name: '', description: '', credits: '', capacity: '' };
+                    this.state.showCourseModal = true;
+                },
+                saveCourse() {
+                    if(!this.state.courseForm.course_code || !this.state.courseForm.course_name) return alert('Code and Name are required');
+                    const newCourse = {
+                        id: uuid(),
+                        ...this.state.courseForm,
+                        credits: parseInt(this.state.courseForm.credits) || 0,
+                        capacity: parseInt(this.state.courseForm.capacity) || 0
+                    };
+                    this.db.courses.push(newCourse);
+                    this.saveDb();
+                    this.state.showCourseModal = false;
+                },
+                deleteCourse(id) {
+                    const hasEnrollments = this.db.enrollments.some(e => e.course_id === id && e.status === 'Active');
+                    if(hasEnrollments) return alert('Cannot delete course with active enrollments.');
+                    if(confirm('Are you sure?')) {
+                        this.db.courses = this.db.courses.filter(c => c.id !== id);
+                        this.db.enrollments = this.db.enrollments.filter(e => e.course_id !== id);
+                        this.saveDb();
+                    }
+                },
+
+                // Enrollments Logic
+                openEnrollmentModal() {
+                    this.state.enrollmentForm = { student_id: '', course_id: '' };
+                    this.state.enrollmentError = '';
+                    this.state.showEnrollmentModal = true;
+                },
+                enrollStudent() {
+                    const { student_id, course_id } = this.state.enrollmentForm;
+                    if(!student_id || !course_id) return this.state.enrollmentError = 'Please select both student and course.';
+
+                    // Check if already enrolled
+                    const alreadyEnrolled = this.db.enrollments.some(e => e.student_id === student_id && e.course_id === course_id && e.status === 'Active');
+                    if(alreadyEnrolled) return this.state.enrollmentError = 'Student is already enrolled in this course.';
+
+                    // Check capacity
+                    const course = this.db.courses.find(c => c.id === course_id);
+                    const currentCount = this.getCourseEnrollmentCount(course_id);
+                    if(currentCount >= course.capacity) return this.state.enrollmentError = 'Course has reached maximum capacity.';
+
+                    const newEnrollment = {
+                        id: uuid(),
+                        student_id,
+                        course_id,
+                        enrollment_date: new Date().toISOString().split('T')[0],
+                        status: 'Active'
+                    };
+                    this.db.enrollments.push(newEnrollment);
+                    this.saveDb();
+                    this.state.showEnrollmentModal = false;
+                },
+                dropEnrollment(id) {
+                    const enr = this.db.enrollments.find(e => e.id === id);
+                    if(enr && confirm('Are you sure you want to drop this course?')) {
+                        enr.status = 'Dropped';
+                        this.saveDb();
+                    }
+                },
+
+                // Helpers/Computed
+                get filteredStudents() {
+                    const q = this.state.studentSearch.toLowerCase();
+                    if(!q) return this.db.students;
+                    return this.db.students.filter(s => 
+                        s.first_name.toLowerCase().includes(q) || 
+                        s.last_name.toLowerCase().includes(q) || 
+                        s.student_id.toLowerCase().includes(q) ||
+                        s.email.toLowerCase().includes(q)
+                    );
+                },
+                get filteredCourses() {
+                    const q = this.state.courseSearch.toLowerCase();
+                    if(!q) return this.db.courses;
+                    return this.db.courses.filter(c => 
+                        c.course_name.toLowerCase().includes(q) || 
+                        c.course_code.toLowerCase().includes(q)
+                    );
+                },
+                getStudentName(id) {
+                    const s = this.db.students.find(s => s.id === id);
+                    return s ? `${s.first_name} ${s.last_name}` : 'Unknown';
+                },
+                getCourseName(id) {
+                    const c = this.db.courses.find(c => c.id === id);
+                    return c ? c.course_name : 'Unknown';
+                },
+                getCourseEnrollmentCount(courseId) {
+                    return this.db.enrollments.filter(e => e.course_id === courseId && e.status === 'Active').length;
+                },
+                getCourseCapacityColor(course) {
+                    const count = this.getCourseEnrollmentCount(course.id);
+                    if(count >= course.capacity) return 'text-red-600 font-bold';
+                    if(count >= course.capacity * 0.75) return 'text-yellow-600';
+                    return 'text-green-600';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
